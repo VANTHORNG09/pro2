@@ -16,77 +16,88 @@ import {
   GraduationCap,
   Shield,
   ChevronLeft,
+  ChevronRight,
   Settings,
   HelpCircle,
   LogOut,
   BarChart3,
   CalendarDays,
-  MessageSquare,
-  FolderKanban,
+  Bell,
+  History,
+  Award,
   PanelLeft,
+  X,
+  Search,
 } from "lucide-react";
 
 // ============= Types =============
 
-/** User role types for the application */
 type UserRole = "admin" | "teacher" | "student";
 
-/** Represents a single navigation item with optional badge count */
 interface NavItem {
   title: string;
   href: string;
   icon: React.ElementType;
-  /** Number of pending items (e.g., unread assignments) */
   badge?: number;
 }
 
-/** Groups navigation items under a labeled section */
 interface NavGroup {
   label: string;
   items: NavItem[];
 }
 
-/** Configuration for role-specific display properties */
 interface RoleConfig {
   label: string;
   icon: React.ElementType;
-  color: string;
+  badgeBg: string;
+  badgeText: string;
+  dashboardHref: string;
 }
 
-// ============= Navigation Config =============
-/** Maps user roles to their display configuration */
+// ============= Role Config =============
+
 const roleConfig: Record<UserRole, RoleConfig> = {
   admin: {
     label: "Administrator",
     icon: Shield,
-    color: "from-slate-600 to-blue-600",
+    badgeBg: "bg-blue-50 dark:bg-blue-500/10",
+    badgeText: "text-blue-600 dark:text-blue-400",
+    dashboardHref: "/admin",
   },
   teacher: {
     label: "Teacher",
     icon: GraduationCap,
-    color: "from-sky-500 to-cyan-600",
+    badgeBg: "bg-emerald-50 dark:bg-emerald-500/10",
+    badgeText: "text-emerald-600 dark:text-emerald-400",
+    dashboardHref: "/teacher",
   },
   student: {
     label: "Student",
     icon: School,
-    color: "from-emerald-500 to-teal-600",
+    badgeBg: "bg-cyan-50 dark:bg-cyan-500/10",
+    badgeText: "text-cyan-600 dark:text-cyan-400",
+    dashboardHref: "/student",
   },
 };
+
+// ============= Navigation Data =============
 
 const adminNavGroups: NavGroup[] = [
   {
     label: "Management",
     items: [
-      { title: "User Management", href: "/admin/users", icon: Users },
+      { title: "Dashboard", href: "/admin", icon: LayoutDashboard },
+      { title: "User Management", href: "/admin/users", icon: Users, badge: 3 },
       { title: "Class Management", href: "/admin/classes", icon: BookOpen },
-      { title: "Course Management", href: "/admin/courses", icon: FolderKanban },
+      { title: "Course Management", href: "/admin/courses", icon: FileText },
+      { title: "Assignments", href: "/admin/assignments", icon: ClipboardList },
     ],
   },
   {
     label: "Analytics",
     items: [
       { title: "Reports", href: "/admin/reports", icon: BarChart3 },
-      { title: "Activity Logs", href: "/admin/logs", icon: FileText },
+      { title: "Activity Logs", href: "/admin/logs", icon: History },
     ],
   },
 ];
@@ -95,15 +106,25 @@ const teacherNavGroups: NavGroup[] = [
   {
     label: "Teaching",
     items: [
+      { title: "Dashboard", href: "/teacher", icon: LayoutDashboard },
       { title: "My Classes", href: "/teacher/classes", icon: BookOpen },
-      { title: "Assignments", href: "/teacher/assignments", icon: ClipboardList },
-      { title: "Submission Review", href: "/teacher/submissions", icon: CheckCircle2 },
+      {
+        title: "Assignments",
+        href: "/teacher/assignments",
+        icon: ClipboardList,
+      },
+      {
+        title: "Submission Review",
+        href: "/teacher/submissions",
+        icon: CheckCircle2,
+        badge: 12,
+      },
     ],
   },
   {
     label: "Communication",
     items: [
-      { title: "Announcements", href: "/teacher/announcements", icon: MessageSquare },
+      { title: "Announcements", href: "/teacher/announcements", icon: Bell },
       { title: "Schedule", href: "/teacher/schedule", icon: CalendarDays },
     ],
   },
@@ -113,26 +134,29 @@ const studentNavGroups: NavGroup[] = [
   {
     label: "Academic",
     items: [
+      { title: "Dashboard", href: "/student", icon: LayoutDashboard },
       { title: "My Classes", href: "/student/classes", icon: BookOpen },
-      { title: "Assignments", href: "/student/assignments", icon: ClipboardList },
+      {
+        title: "Assignments",
+        href: "/student/assignments",
+        icon: ClipboardList,
+      },
       { title: "My Submissions", href: "/student/submissions", icon: FileText },
     ],
   },
   {
     label: "Progress",
     items: [
-      { title: "Grades", href: "/student/grades", icon: BarChart3 },
+      { title: "Grades", href: "/student/grades", icon: Award },
       { title: "Calendar", href: "/student/calendar", icon: CalendarDays },
     ],
   },
 ];
 
 const generalNavItems: NavItem[] = [
-  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Profile", href: "/profile", icon: User },
 ];
 
-// Bottom nav items - Settings, Help are links; Logout is an action
 const bottomNavItems: NavItem[] = [
   { title: "Settings", href: "/settings", icon: Settings },
   { title: "Help", href: "/help", icon: HelpCircle },
@@ -140,10 +164,10 @@ const bottomNavItems: NavItem[] = [
 ];
 
 // ============= Sidebar Context =============
-const SIDEBAR_COOKIE_NAME = "sidebar_collapsed";
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days in seconds
 
-/** Shape of the sidebar context value */
+const SIDEBAR_COOKIE_NAME = "sidebar_collapsed";
+const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
+
 interface SidebarContextType {
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
@@ -155,11 +179,6 @@ interface SidebarContextType {
 
 const SidebarContext = React.createContext<SidebarContextType | null>(null);
 
-/**
- * Custom hook to access sidebar state and actions.
- * Must be used within a SidebarProvider.
- * @throws Error if used outside SidebarProvider
- */
 function useSidebar() {
   const context = React.useContext(SidebarContext);
   if (!context) {
@@ -169,46 +188,55 @@ function useSidebar() {
 }
 
 // ============= Sidebar Provider =============
+
 interface SidebarProviderProps {
   children: React.ReactNode;
   defaultCollapsed?: boolean;
 }
 
-/**
- * Provides sidebar state management including collapse, mobile behavior,
- * and cookie persistence.
- */
-function SidebarProvider({ children, defaultCollapsed = false }: SidebarProviderProps) {
+function SidebarProvider({
+  children,
+  defaultCollapsed = false,
+}: SidebarProviderProps) {
   const [isMobile, setIsMobile] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [collapsed, setCollapsed] = React.useState(defaultCollapsed);
 
-  // Check mobile on mount and resize
   React.useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile) setMobileOpen(false);
     };
     checkMobile();
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Load collapsed state from cookie on mount
   React.useEffect(() => {
-    const cookies = document.cookie.split("; ");
-    const sidebarCookie = cookies.find((row) => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`));
-    if (sidebarCookie) {
-      const value = sidebarCookie.split("=")[1];
-      if (value === "true" || value === "false") {
-        setCollapsed(value === "true");
+    try {
+      const cookies = document.cookie.split("; ");
+      const sidebarCookie = cookies.find((row) =>
+        row.startsWith(`${SIDEBAR_COOKIE_NAME}=`),
+      );
+      if (sidebarCookie) {
+        const value = sidebarCookie.split("=")[1];
+        if (value === "true" || value === "false") {
+          setCollapsed(value === "true");
+        }
       }
+    } catch {
+      // Cookie access denied
     }
   }, []);
 
-  // Save collapsed state to cookie
   const handleSetCollapsed = React.useCallback((newCollapsed: boolean) => {
     setCollapsed(newCollapsed);
-    document.cookie = `${SIDEBAR_COOKIE_NAME}=${newCollapsed}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+    try {
+      document.cookie = `${SIDEBAR_COOKIE_NAME}=${newCollapsed}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+    } catch {
+      // Cookie access denied
+    }
   }, []);
 
   const toggleSidebar = React.useCallback(() => {
@@ -219,7 +247,6 @@ function SidebarProvider({ children, defaultCollapsed = false }: SidebarProvider
     }
   }, [isMobile, collapsed, handleSetCollapsed]);
 
-  // Close mobile sidebar on Escape key
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isMobile && mobileOpen) {
@@ -228,6 +255,17 @@ function SidebarProvider({ children, defaultCollapsed = false }: SidebarProvider
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isMobile, mobileOpen]);
+
+  React.useEffect(() => {
+    if (isMobile && mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [isMobile, mobileOpen]);
 
   const value = React.useMemo(
@@ -239,29 +277,23 @@ function SidebarProvider({ children, defaultCollapsed = false }: SidebarProvider
       mobileOpen,
       setMobileOpen,
     }),
-    [collapsed, handleSetCollapsed, toggleSidebar, isMobile, mobileOpen]
+    [collapsed, handleSetCollapsed, toggleSidebar, isMobile, mobileOpen],
   );
 
   return (
-    <SidebarContext.Provider value={value}>
-      {children}
-    </SidebarContext.Provider>
+    <SidebarContext.Provider value={value}>{children}</SidebarContext.Provider>
   );
 }
 
 // ============= Sidebar Trigger =============
+
 interface SidebarTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   asChild?: boolean;
 }
 
-/**
- * Button component to toggle the sidebar visibility.
- * Supports custom styling and passes through button props.
- */
 const SidebarTrigger = React.forwardRef<HTMLButtonElement, SidebarTriggerProps>(
   ({ className, onClick, ...props }, ref) => {
     const { toggleSidebar, isMobile, mobileOpen, collapsed } = useSidebar();
-
     const expanded = isMobile ? mobileOpen : !collapsed;
 
     return (
@@ -275,12 +307,11 @@ const SidebarTrigger = React.forwardRef<HTMLButtonElement, SidebarTriggerProps>(
         aria-expanded={expanded}
         data-state={expanded ? "open" : "closed"}
         className={cn(
-          "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors",
-          "hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-50",
+          "inline-flex items-center justify-center rounded-md p-2 transition-colors",
+          "hover:bg-accent hover:text-accent-foreground",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           "disabled:pointer-events-none disabled:opacity-50",
-          "h-9 w-9",
-          className
+          className,
         )}
         {...props}
       >
@@ -288,25 +319,26 @@ const SidebarTrigger = React.forwardRef<HTMLButtonElement, SidebarTriggerProps>(
         <span className="sr-only">Toggle Sidebar</span>
       </button>
     );
-  }
+  },
 );
-
 SidebarTrigger.displayName = "SidebarTrigger";
 
 // ============= Sidebar Components =============
+
 interface SidebarProps extends React.HTMLAttributes<HTMLElement> {
   side?: "left" | "right";
   variant?: "sidebar" | "floating";
 }
 
-/**
- * Main sidebar container with responsive behavior.
- * Renders as a sheet on mobile and collapsible sidebar on desktop.
- */
-function Sidebar({ side = "left", variant = "sidebar", className, children, ...props }: SidebarProps) {
+function Sidebar({
+  side = "left",
+  variant = "sidebar",
+  className,
+  children,
+  ...props
+}: SidebarProps) {
   const { collapsed, isMobile, mobileOpen, setMobileOpen } = useSidebar();
 
-  // Mobile sidebar via sheet
   if (isMobile) {
     return (
       <>
@@ -322,32 +354,33 @@ function Sidebar({ side = "left", variant = "sidebar", className, children, ...p
           aria-label="Mobile navigation"
           aria-hidden={!mobileOpen}
           className={cn(
-            "fixed top-0 z-50 h-full w-72 transform bg-white shadow-xl transition-transform duration-300 dark:bg-slate-900",
-            side === "left" ? "left-0" : "right-0",
-            mobileOpen ? "translate-x-0" : side === "left" ? "-translate-x-full" : "translate-x-full",
-            className
+            "fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-slate-950 shadow-xl transition-transform duration-300 ease-in-out",
+            mobileOpen ? "translate-x-0" : "-translate-x-full",
           )}
           {...props}
         >
-          {children}
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="absolute right-3 top-3 z-10 rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            aria-label="Close sidebar"
+          >
+            <X className="h-4 w-4 text-slate-500" />
+          </button>
+          <div className="h-full flex flex-col">{children}</div>
         </aside>
       </>
     );
   }
 
-  // Desktop sidebar
   return (
     <aside
       role="navigation"
       aria-label="Main navigation"
       className={cn(
-        "relative hidden shrink-0 flex-col border-r bg-slate-50/95 text-slate-900 backdrop-blur-md transition-all duration-300 lg:flex",
-        "bg-[radial-gradient(140%_120%_at_0%_0%,rgba(59,130,246,0.08),transparent_60%)]",
-        "dark:border-slate-800 dark:bg-slate-950/80 dark:text-slate-100",
-        "dark:bg-[radial-gradient(120%_120%_at_0%_0%,rgba(59,130,246,0.14),transparent_60%)]",
-        collapsed ? "w-20" : "w-72",
+        "relative hidden shrink-0 flex-col border-r bg-white dark:bg-slate-950 transition-[width] duration-300 ease-in-out lg:flex",
+        collapsed ? "w-[72px]" : "w-[260px]",
         variant === "floating" && "m-2 rounded-xl border shadow-sm",
-        className
+        className,
       )}
       {...props}
     >
@@ -356,120 +389,101 @@ function Sidebar({ side = "left", variant = "sidebar", className, children, ...p
   );
 }
 
-// ============= Sidebar Header =============
-/** Header container for sidebar branding and logo */
-function SidebarHeader({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      className={cn("flex flex-col border-b border-slate-200 dark:border-slate-800", className)}
-      {...props}
-    >
-      {children}
-    </div>
-  );
-}
-
-// ============= Sidebar Footer =============
-/** Footer container for bottom navigation items */
-function SidebarFooter({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      className={cn("mt-auto border-t border-slate-200 dark:border-slate-800", className)}
-      {...props}
-    >
-      {children}
-    </div>
-  );
-}
-
-// ============= Sidebar Content =============
-/** Scrollable content area for navigation items with custom scrollbar */
-function SidebarContent({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+function SidebarHeader({
+  className,
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        "relative flex-1 overflow-y-auto py-4 pr-3",
-        "[--sidebar-scrollbar-thumb:#3b82f6]",
-        "[--sidebar-scrollbar-track:rgba(226,232,240,0.7)]",
-        "dark:[--sidebar-scrollbar-thumb:rgba(59,130,246,0.8)]",
-        "dark:[--sidebar-scrollbar-track:rgba(30,41,59,0.6)]",
-        // Smooth scrolling
-        "scroll-smooth",
-        // Decorative arrow tips to echo the slim-scroll indicator
-        "before:pointer-events-none before:absolute before:right-1 before:top-2 before:h-0 before:w-0",
-        "before:border-x-[4px] before:border-x-transparent before:border-b-[6px] before:border-b-slate-400/80",
-        "dark:before:border-b-slate-500/80",
-        "after:pointer-events-none after:absolute after:right-1 after:bottom-2 after:h-0 after:w-0",
-        "after:border-x-[4px] after:border-x-transparent after:border-t-[6px] after:border-t-slate-400/80",
-        "dark:after:border-t-slate-500/80",
-        // Custom scrollbar styling for WebKit browsers (Chrome, Safari, Edge)
-        "[&::-webkit-scrollbar]:w-2.5",
-        "[&::-webkit-scrollbar-track]:rounded-full",
-        "[&::-webkit-scrollbar-track]:bg-slate-200/70",
-        "[&::-webkit-scrollbar-track]:dark:bg-slate-800/60",
-        "[&::-webkit-scrollbar-thumb]:rounded-full",
-        "[&::-webkit-scrollbar-thumb]:min-h-[48px]",
-        "[&::-webkit-scrollbar-thumb]:bg-blue-500",
-        "[&::-webkit-scrollbar-thumb]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.5)]",
-        "hover:[&::-webkit-scrollbar-thumb]:bg-blue-600",
-        "dark:[&::-webkit-scrollbar-thumb]:bg-blue-500/80",
-        "dark:hover:[&::-webkit-scrollbar-thumb]:bg-blue-400",
-        className
+        "flex shrink-0 items-center border-b border-slate-200 dark:border-slate-800",
+        className,
       )}
-      style={{
-        scrollbarWidth: "thin",
-        scrollbarColor:
-          "var(--sidebar-scrollbar-thumb) var(--sidebar-scrollbar-track)",
-      }}
       {...props}
     >
       {children}
+    </div>
+  );
+}
+
+function SidebarFooter({
+  className,
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={cn(
+        "mt-auto shrink-0 border-t border-slate-200 dark:border-slate-800",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SidebarContent({
+  className,
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={cn("relative flex-1 overflow-y-auto py-3", className)}
+      style={{ scrollbarWidth: "thin" }}
+      {...props}
+    >
+      <div className="space-y-1 px-3">{children}</div>
     </div>
   );
 }
 
 // ============= Sidebar Group =============
+
 interface SidebarGroupProps extends React.HTMLAttributes<HTMLDivElement> {
   label?: string;
 }
 
-/** Groups navigation items under an optional section label */
-function SidebarGroup({ label, className, children, ...props }: SidebarGroupProps) {
+function SidebarGroup({
+  label,
+  className,
+  children,
+  ...props
+}: SidebarGroupProps) {
   const { collapsed } = useSidebar();
 
   return (
-    <div className={cn("mb-6", className)} {...props}>
-      {label && !collapsed && (
+    <div className={cn("mb-3", className)} {...props}>
+      {label && (
         <p
-          id={`sidebar-group-${label.toLowerCase().replace(/\s+/g, "-")}`}
-          className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500"
+          className={cn(
+            "mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500",
+            collapsed && "text-center text-[8px]",
+          )}
         >
-          {label}
+          {collapsed ? "···" : label}
         </p>
       )}
-      <div
-        {...(label && !collapsed ? { role: "group", "aria-labelledby": `sidebar-group-${label.toLowerCase().replace(/\s+/g, "-")}` } : {})}
-        className="space-y-1"
-      >
-        {children}
-      </div>
+      <div className="space-y-0.5">{children}</div>
     </div>
   );
 }
 
 // ============= Sidebar Menu Item =============
-interface SidebarMenuItemProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
+
+interface SidebarMenuItemProps {
   icon: React.ElementType;
   href: string;
   badge?: number;
   active?: boolean;
+  className?: string;
+  children?: React.ReactNode;
+  onClick?: React.MouseEventHandler<HTMLElement>;
 }
 
-/**
- * Navigation link component with icon, optional badge, and active state.
- * Renders as a Next.js Link for client-side navigation, or as a button
- * when the href starts with "#" (for actions like logout).
- */
 const SidebarMenuItem = React.memo(function SidebarMenuItem({
   icon: Icon,
   href,
@@ -478,27 +492,25 @@ const SidebarMenuItem = React.memo(function SidebarMenuItem({
   children,
   className,
   onClick,
-  ...props
-}: SidebarMenuItemProps & { onClick?: React.MouseEventHandler }) {
+}: SidebarMenuItemProps) {
   const { collapsed } = useSidebar();
   const isAction = href.startsWith("#");
 
-  const containerClasses = cn(
-    "group flex items-center rounded-xl text-sm font-medium transition-all duration-200",
-    collapsed ? "mx-auto h-10 w-10 justify-center" : "gap-3 px-3 py-2.5",
+  const baseClasses = cn(
+    "group relative flex items-center rounded-lg text-sm font-medium transition-all duration-150",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
     active
-      ? "bg-blue-50 text-blue-700 shadow-sm shadow-blue-500/10 dark:bg-blue-500/10 dark:text-blue-300"
-      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white",
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
-    className
+      ? "bg-slate-200/80 text-slate-900 dark:bg-slate-700/60 dark:text-white"
+      : "text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200",
+    collapsed ? "mx-auto justify-center h-10 w-10" : "gap-3 px-3 py-2",
   );
 
   const iconClasses = cn(
-    "shrink-0 transition-colors",
+    "shrink-0",
     collapsed ? "h-5 w-5" : "h-4 w-4",
     active
-      ? "text-blue-600 dark:text-blue-400"
-      : "text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300"
+      ? "text-slate-700 dark:text-white"
+      : "text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300",
   );
 
   const renderContent = (
@@ -506,37 +518,28 @@ const SidebarMenuItem = React.memo(function SidebarMenuItem({
       <Icon className={iconClasses} aria-hidden="true" />
       {!collapsed && (
         <>
-          <span className="flex-1 whitespace-nowrap">{children}</span>
+          <span className="flex-1 truncate">{children}</span>
           {badge !== undefined && badge > 0 && (
-            <span
-              className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-              aria-label={`${badge} items`}
-            >
-              {badge}
+            <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-900 px-1.5 text-[10px] font-semibold text-white dark:bg-slate-100 dark:text-slate-900">
+              {badge > 99 ? "99+" : badge}
             </span>
           )}
         </>
       )}
       {collapsed && badge !== undefined && badge > 0 && (
-        <span
-          className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white"
-          aria-label={`${badge} items`}
-        >
-          {badge}
+        <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 text-[9px] font-bold text-white dark:bg-slate-100 dark:text-slate-900">
+          {badge > 9 ? "9+" : badge}
         </span>
       )}
     </>
   );
 
-  // Render as button for action hrefs (e.g., #logout, #help)
   if (isAction) {
     return (
       <button
         type="button"
-        className={cn("relative w-full", containerClasses)}
-        aria-current={active ? "page" : undefined}
-        onClick={onClick}
-        {...(props as React.ButtonHTMLAttributes<HTMLButtonElement>)}
+        className={cn("w-full", baseClasses, className)}
+        onClick={onClick as React.MouseEventHandler<HTMLButtonElement>}
       >
         {renderContent}
       </button>
@@ -546,9 +549,8 @@ const SidebarMenuItem = React.memo(function SidebarMenuItem({
   return (
     <Link
       href={href}
-      className={containerClasses}
+      className={cn(baseClasses, className)}
       aria-current={active ? "page" : undefined}
-      {...props}
     >
       {renderContent}
     </Link>
@@ -556,11 +558,11 @@ const SidebarMenuItem = React.memo(function SidebarMenuItem({
 });
 
 // ============= Sidebar Collapse Button =============
-/**
- * Floating button to toggle sidebar collapse state on desktop.
- * Positioned at the edge of the sidebar.
- */
-function SidebarCollapseButton({ className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+
+function SidebarCollapseButton({
+  className,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   const { collapsed, toggleSidebar } = useSidebar();
 
   return (
@@ -569,23 +571,65 @@ function SidebarCollapseButton({ className, ...props }: React.ButtonHTMLAttribut
       aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
       aria-expanded={!collapsed}
       className={cn(
-        "absolute -right-3 top-8 z-20 flex h-6 w-6 items-center justify-center rounded-full",
-        "border bg-white text-slate-500 shadow-sm hover:bg-slate-100 hover:text-slate-700",
-        "dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700",
-        "transition-all duration-300",
-        className
+        "absolute -right-3 top-7 z-20 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm transition-all duration-300 hover:bg-slate-50 hover:text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500 dark:hover:bg-slate-700",
+        className,
       )}
       {...props}
     >
-      <ChevronLeft
-        className={cn("h-3.5 w-3.5 transition-transform duration-300", collapsed && "rotate-180")}
-        aria-hidden="true"
-      />
+      {collapsed ? (
+        <ChevronRight className="h-3 w-3" aria-hidden="true" />
+      ) : (
+        <ChevronLeft className="h-3 w-3" aria-hidden="true" />
+      )}
     </button>
   );
 }
 
-// ============= Main Sidebar Component =============
+// ============= Role Badge =============
+
+interface RoleBadgeProps {
+  currentRole: UserRole;
+}
+
+function RoleBadge({ currentRole }: RoleBadgeProps) {
+  const { collapsed } = useSidebar();
+  const config = roleConfig[currentRole];
+  const RoleIcon = config.icon;
+
+  return (
+    <div
+      className={cn(
+        "flex items-center rounded-lg px-3 py-2.5",
+        config.badgeBg,
+        collapsed ? "justify-center p-2" : "gap-3",
+      )}
+    >
+      <div
+        className={cn(
+          "flex items-center justify-center rounded-md",
+          config.badgeText,
+        )}
+      >
+        <RoleIcon
+          className={cn("h-4 w-4", collapsed ? "h-5 w-5" : "h-4 w-4")}
+        />
+      </div>
+      {!collapsed && (
+        <div className="min-w-0 flex-1">
+          <p className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            Role
+          </p>
+          <p className={cn("truncate text-sm font-semibold", config.badgeText)}>
+            {config.label}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============= Main App Sidebar =============
+
 interface AppSidebarProps {
   role?: UserRole;
 }
@@ -595,13 +639,21 @@ export function AppSidebar({ role = "student" }: AppSidebarProps) {
   const { collapsed, isMobile } = useSidebar();
 
   const navGroups =
-    role === "admin" ? adminNavGroups : role === "teacher" ? teacherNavGroups : studentNavGroups;
+    role === "admin"
+      ? adminNavGroups
+      : role === "teacher"
+        ? teacherNavGroups
+        : studentNavGroups;
 
   const currentRole = roleConfig[role];
-  const RoleIcon = currentRole.icon;
 
   const isActive = (href: string) => {
-    if (href === "/dashboard") return pathname === href;
+    if (href === "/admin")
+      return pathname === "/admin" || pathname === "/dashboard";
+    if (href === "/teacher")
+      return pathname === "/teacher" || pathname === "/dashboard";
+    if (href === "/student")
+      return pathname === "/student" || pathname === "/dashboard";
     return pathname.startsWith(href);
   };
 
@@ -619,69 +671,39 @@ export function AppSidebar({ role = "student" }: AppSidebarProps) {
         handleLogout();
       }
     },
-    [handleLogout]
+    [handleLogout],
   );
 
   return (
     <Sidebar>
-      {/* Logo Section */}
-      <SidebarHeader className="border-b border-slate-200 dark:border-slate-800">
-        <div className={cn("py-5", collapsed ? "px-3" : "px-5")}>
-          <Link href="/dashboard" className={cn("flex items-center", collapsed ? "justify-center" : "gap-3")}>
-            <div
-              className={cn(
-                "flex items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600",
-                "shadow-md shadow-emerald-200/50 dark:shadow-emerald-900/30",
-                collapsed ? "h-10 w-10" : "h-9 w-9"
-              )}
-            >
-              <GraduationCap className="h-5 w-5 text-white" />
-            </div>
-            {!collapsed && (
-              <div className="overflow-hidden whitespace-nowrap">
-                <p className="text-lg font-bold tracking-tight text-slate-800 dark:text-white">
-                  AssignBridge
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Smart Assignment Platform
-                </p>
-              </div>
-            )}
-          </Link>
-        </div>
+      {/* Logo / Branding */}
+      <SidebarHeader className="h-14 justify-between px-4">
+        <Link
+          href={currentRole.dashboardHref}
+          className={cn(
+            "flex items-center",
+            collapsed ? "justify-center w-full" : "gap-2.5",
+          )}
+        >
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-900 dark:bg-white">
+            <GraduationCap className="h-4 w-4 text-white dark:text-slate-900" />
+          </div>
+          {!collapsed && (
+            <span className="text-sm font-bold tracking-tight text-slate-800 dark:text-white">
+              AssignBridge
+            </span>
+          )}
+        </Link>
       </SidebarHeader>
 
       {/* Role Badge */}
-      <div className={cn("border-b border-slate-200 py-4 dark:border-slate-800", collapsed ? "px-3" : "px-5")}>
-        <div
-          className={cn(
-            "flex items-center rounded-xl bg-slate-50 px-3 py-2.5 dark:bg-slate-800/50",
-            collapsed && "justify-center"
-          )}
-        >
-          <div
-            className={cn(
-              "flex items-center justify-center rounded-lg bg-gradient-to-br text-white shadow-sm",
-              currentRole.color,
-              collapsed ? "h-9 w-9" : "h-8 w-8"
-            )}
-          >
-            <RoleIcon className="h-4 w-4" />
-          </div>
-          {!collapsed && (
-            <div className="ml-3">
-              <p className="text-xs text-slate-500 dark:text-slate-400">Current Role</p>
-              <p className="truncate text-sm font-semibold text-slate-800 dark:text-white">
-                {currentRole.label}
-              </p>
-            </div>
-          )}
-        </div>
+      <div className="px-3 py-3">
+        <RoleBadge currentRole={role} />
       </div>
 
-      {/* Navigation Content */}
+      {/* Navigation */}
       <SidebarContent>
-        {/* General Section */}
+        {/* General */}
         <SidebarGroup label="General">
           {generalNavItems.map((item) => (
             <SidebarMenuItem
@@ -695,7 +717,7 @@ export function AppSidebar({ role = "student" }: AppSidebarProps) {
           ))}
         </SidebarGroup>
 
-        {/* Role-Specific Sections */}
+        {/* Role-Specific */}
         {navGroups.map((group) => (
           <SidebarGroup key={group.label} label={group.label}>
             {group.items.map((item) => (
@@ -713,9 +735,9 @@ export function AppSidebar({ role = "student" }: AppSidebarProps) {
         ))}
       </SidebarContent>
 
-      {/* Bottom Section */}
-      <SidebarFooter className="border-t border-slate-200 dark:border-slate-800">
-        <div className={cn("py-3", collapsed ? "px-3" : "px-4")}>
+      {/* Bottom Navigation */}
+      <SidebarFooter className="px-3 py-3">
+        <div className="space-y-0.5">
           {bottomNavItems.map((item) => (
             <SidebarMenuItem
               key={item.href}
@@ -729,14 +751,12 @@ export function AppSidebar({ role = "student" }: AppSidebarProps) {
           ))}
         </div>
       </SidebarFooter>
-
-      {/* Collapse Button - only show on desktop */}
-      {!isMobile && <SidebarCollapseButton />}
     </Sidebar>
   );
 }
 
-// ============= Export all components =============
+// ============= Exports =============
+
 export {
   SidebarProvider,
   useSidebar,
@@ -747,5 +767,4 @@ export {
   SidebarContent,
   SidebarGroup,
   SidebarMenuItem,
-  SidebarCollapseButton,
 };

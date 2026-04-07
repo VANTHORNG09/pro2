@@ -133,3 +133,34 @@ export function useRemoveStudent() {
     },
   });
 }
+
+// Archive class
+export function useArchiveClass() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => classesAPI.archive(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: classKeys.all });
+    },
+    onError: (error: Error) => {
+      console.error('Failed to archive class:', error);
+    },
+  });
+}
+
+// Unarchive class
+export function useUnarchiveClass() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => classesAPI.unarchive(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: classKeys.all });
+    },
+    onError: (error: Error) => {
+      console.error('Failed to unarchive class:', error);
+    },
+  });
+}
+

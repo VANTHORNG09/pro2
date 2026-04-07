@@ -88,6 +88,20 @@ export const classesAPI = {
     });
   },
 
+  // Archive class
+  archive: async (id: number): Promise<Class> => {
+    return request<Class>(`/classes/${id}/archive`, {
+      method: 'POST',
+    });
+  },
+
+  // Unarchive class
+  unarchive: async (id: number): Promise<Class> => {
+    return request<Class>(`/classes/${id}/unarchive`, {
+      method: 'POST',
+    });
+  },
+
   // Get class statistics
   getStats: async (classId: number): Promise<{
     totalStudents: number;

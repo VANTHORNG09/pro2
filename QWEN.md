@@ -1,91 +1,118 @@
-# AssignBridge Frontend
+# AssignBridge – Project Context
 
-## Project Overview
+## Overview
 
-**AssignBridge** is a smart assignment management platform built with Next.js 16 (App Router). It provides role-based dashboards for three user types: **Admin**, **Teacher**, and **Student**. The platform enables managing classes, creating/publishing assignments, submitting work, and grading.
+**AssignBridge** is a **smart assignment management platform** built as a full-stack-capable web application. It provides role-based dashboards for **Admin**, **Teacher**, and **Student** users, with features for managing assignments, authentication, and analytics.
 
-### Tech Stack
+The frontend is a **Next.js 16** (App Router) application using **React 19**, **TypeScript**, and **Tailwind CSS 4**, with a polished glassmorphic dark UI.
 
-| Category                | Technology                        |
-| ----------------------- | --------------------------------- |
-| **Framework**           | Next.js 16 (App Router, React 19) |
-| **Language**            | TypeScript 5                      |
-| **Styling**             | Tailwind CSS v4                   |
-| **UI Components**       | shadcn/ui (radix-nova style)      |
-| **Icons**               | Lucide React                      |
-| **Animations**          | Framer Motion                     |
-| **Charts**              | Recharts                          |
-| **State/Data Fetching** | TanStack React Query v5           |
-| **Forms**               | React Hook Form + Zod validation  |
-| **Theme**               | next-themes (dark/light mode)     |
+---
 
-### Architecture
+## Tech Stack
+
+| Layer                     | Technology                                                |
+| ------------------------- | --------------------------------------------------------- |
+| **Framework**             | Next.js 16 (App Router)                                   |
+| **Language**              | TypeScript 5                                              |
+| **UI Library**            | React 19 + React DOM 19                                   |
+| **Styling**               | Tailwind CSS 4 + custom CSS variables (OKLCH color space) |
+| **Component Library**     | shadcn/ui (Radix UI primitives)                           |
+| **Icons**                 | Lucide React + React Icons                                |
+| **Animations**            | Framer Motion                                             |
+| **Charts**                | Recharts                                                  |
+| **Form Handling**         | React Hook Form + Zod validation                          |
+| **State / Data Fetching** | TanStack React Query                                      |
+| **Theming**               | next-themes (dark/light mode)                             |
+| **Linting**               | ESLint 9 + eslint-config-next                             |
+
+---
+
+## Project Structure
 
 ```
-app/
-  (auth)/          # Authentication routes (login, signup)
-  (dashboard)/     # Protected dashboard area
-    admin/         # Admin-specific pages
-    teacher/       # Teacher-specific pages
-    student/       # Student-specific pages
-    dashboard/     # Shared dashboard
-    profile/       # User profile
-  (marketing)/     # Public/marketing pages
-  layout.tsx       # Root layout with ThemeProvider
-  globals.css      # Global styles + Tailwind config
-
-components/
-  app-shell/       # Header and shell components
-  assignments/     # Assignment-related UI
-  auth/            # Authentication forms
-  layout/          # Sidebar, Topbar
-  providers/       # React context providers
-  shared/          # Shared UI (status badges, etc.)
-  ui/              # shadcn/ui base components
-
-lib/
-  api/             # API client functions (fetch-based)
-  data/            # Static/mock data
-  hooks/queries/   # TanStack Query hooks
-  types/           # TypeScript type definitions
-  validations/     # Zod schemas
-  utils.ts         # cn() class merge utility
+pro2/
+├── app/                        # Next.js App Router
+│   ├── (auth)/                 # Authentication route group (login, signup, etc.)
+│   ├── (dashboard)/            # Dashboard route group (role-based views)
+│   ├── (marketing)/            # Marketing / landing page route group
+│   ├── layout.tsx              # Root layout with ThemeProvider + ClientProviders
+│   ├── globals.css             # Global styles, Tailwind, glassmorphism utilities
+│   ├── error.tsx               # Global error boundary
+│   └── not-found.tsx           # 404 page
+├── components/                 # React components
+│   ├── app-shell/              # Application shell (sidebar, layout wrappers)
+│   ├── assignments/            # Assignment-related UI components
+│   ├── auth/                   # Authentication form components
+│   ├── landing-page-features/  # Marketing page feature sections
+│   ├── layout/                 # Layout components
+│   ├── navbar/                 # Navigation bar components
+│   ├── providers/              # Context providers (theme, query, etc.)
+│   ├── shared/                 # Shared / reusable components
+│   └── ui/                     # shadcn/ui generated components
+├── hooks/                      # Custom React hooks
+│   ├── use-toast.tsx           # Toast notification hook
+│   └── useAuth.tsx             # Authentication state hook
+├── lib/                        # Utility libraries
+│   ├── api/                    # API client / request helpers
+│   ├── data/                   # Static / seed data
+│   ├── hooks/                  # Library-level hooks
+│   ├── types/                  # TypeScript type definitions
+│   ├── validations/            # Zod validation schemas
+│   └── utils.ts                # General utilities (e.g. cn helper)
+├── proxy.ts                    # Auth middleware / route guard logic
+├── next.config.ts              # Next.js configuration
+├── tsconfig.json               # TypeScript configuration
+├── components.json             # shadcn/ui configuration
+├── postcss.config.mjs          # PostCSS configuration
+├── eslint.config.mjs           # ESLint configuration
+└── package.json                # Project dependencies and scripts
 ```
 
-## Key Concepts
+---
 
-### Role-Based Access
+## Key Architecture Details
 
-The app supports three roles defined in `lib/types/user.ts`:
+### Route Groups
 
-- **admin** — Full system access
-- **teacher** — Create/manage assignments and grade submissions
-- **student** — View and submit assignments
+The app uses Next.js **route groups** to organize pages:
 
-Roles are stored in `localStorage` (`user` key) and read by the dashboard layout to render role-specific sidebar navigation and header badges.
+- **`(auth)`** – Login, signup, password reset flows
+- **`(dashboard)`** – Role-specific dashboard views (admin, teacher, student)
+- **`(marketing)`** – Public-facing landing pages
 
-### API Communication
+### Authentication & Routing
 
-- API base URL: `NEXT_PUBLIC_API_URL` env var, defaults to `http://localhost:8080/api`
-- Auth token stored in `localStorage` under `auth_token`
-- API clients in `lib/api/` use a typed `request<T>()` helper that attaches Bearer tokens
-- TanStack Query hooks in `lib/hooks/queries/` wrap the API clients
-
-### Route Protection
-
-`proxy.ts` (middleware) protects routes:
-
+- `proxy.ts` contains middleware that intercepts requests to protect routes.
+- It checks for an `auth_token` cookie or `Authorization` header.
 - Public routes: `/`, `/login`, `/signup`, `/forgot-password`
-- All other routes require `auth_token` cookie or Authorization header
-- Redirects unauthenticated users to `/login` with a `redirect` query param
+- Protected routes redirect unauthenticated users to `/login`.
+- Role-based access control is planned (roles: `admin`, `teacher`, `student`) but currently allows all authenticated users.
 
-## Building and Running
+### UI / Styling
+
+- **Dark-first design** with a radial gradient background and glassmorphic card/button styles.
+- Uses **OKLCH color space** for CSS custom properties (shadcn theming).
+- Fonts: **Poppins** (headings), **Inter** (body), **Geist** (mono).
+- Components built with **Radix UI** primitives via **shadcn/ui**.
+
+### Path Alias
+
+TypeScript is configured with the `@/*` alias mapping to the project root, so imports look like:
+
+```ts
+import { cn } from "@/lib/utils";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+```
+
+---
+
+## Commands
 
 ```bash
 # Install dependencies
 npm install
 
-# Start dev server
+# Start development server
 npm run dev
 
 # Build for production
@@ -94,28 +121,26 @@ npm run build
 # Start production server
 npm run start
 
-# Run linting
+# Run linter
 npm run lint
 ```
 
+---
+
 ## Development Conventions
 
-- **Strict TypeScript** — `strict: true` in tsconfig; all files use `.ts`/`.tsx`
-- **Path aliases** — `@/*` maps to project root (e.g., `@/lib/utils`)
-- **shadcn/ui** — UI components follow shadcn conventions; new components added via `npx shadcn@latest add <component>`
-- **Tailwind v4** — Uses new CSS `@theme` directive instead of config file; design tokens in `globals.css`
-- **cn() utility** — Use `cn()` from `@/lib/utils` for conditional class merging
-- **Client components** — Marked with `"use client"` directive; interactive components (hooks, state, effects) must be client components
-- **React Query** — Use hooks from `lib/hooks/queries/` for data fetching instead of raw `fetch` in components
+- **TypeScript strict mode** is enabled.
+- **ESLint** is configured via `eslint.config.mjs` with `eslint-config-next`.
+- Components follow the **shadcn/ui** pattern – generated into `components/ui/` and customizable.
+- Use the `cn()` utility from `@/lib/utils` for conditional Tailwind class merging.
+- Forms use **React Hook Form** with **Zod** schema validation (via `@hookform/resolvers`).
+- Data fetching should leverage **TanStack React Query** for caching and server state management.
 
-## Notable Files
+---
 
-| File                         | Purpose                                                |
-| ---------------------------- | ------------------------------------------------------ |
-| `app/layout.tsx`             | Root layout with fonts, ThemeProvider, ClientProviders |
-| `app/(dashboard)/layout.tsx` | Dashboard shell with Sidebar + Topbar                  |
-| `lib/api/assignments.ts`     | Typed API client for assignments CRUD                  |
-| `lib/types/assignment.ts`    | Core types: Assignment, Submission, User, etc.         |
-| `lib/utils.ts`               | `cn()` class merge utility                             |
-| `proxy.ts`                   | Middleware for route protection                        |
-| `components.json`            | shadcn/ui configuration                                |
+## Important Notes
+
+1. **Next.js 16** has breaking changes compared to earlier versions. Always consult `node_modules/next/dist/docs/` or the official Next.js docs before writing code.
+2. The `tsconfig.json` contains some non-standard JSON entries (duplicate keys like `token`, `user`) that appear to be accidental mock data – these should be cleaned up in the actual file.
+3. The `proxy.ts` middleware currently has placeholder auth logic (no actual JWT decoding). Production use requires proper token verification.
+4. Tailwind CSS 4 uses a new configuration approach (no `tailwind.config.js`); config is defined via CSS `@theme` directives in `globals.css`.
