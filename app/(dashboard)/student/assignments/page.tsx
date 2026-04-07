@@ -53,11 +53,24 @@ export default function StudentAssignmentsPage() {
   }
 
   if (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
     return (
       <PageShell>
         <PageHeader title="Assignments" description="View all your assignments." />
-        <div className="p-4 rounded-lg border border-red-500/50 bg-red-500/10">
-          <p className="text-sm text-red-600">Failed to load assignments</p>
+        <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
+            <div>
+              <p className="text-sm font-medium text-red-600">Failed to load assignments</p>
+              <p className="mt-1 text-xs text-red-500/80">{errorMessage}</p>
+              <p className="mt-2 text-xs text-red-500/60">
+                Make sure the backend server is running at{" "}
+                <code className="rounded bg-red-500/10 px-1.5 py-0.5">
+                  {process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api"}
+                </code>
+              </p>
+            </div>
+          </div>
         </div>
       </PageShell>
     )

@@ -10,9 +10,7 @@ type ThemeContextType = {
   toggleTheme: () => void;
 };
 
-const ThemeContext = React.createContext<ThemeContextType | undefined>(
-  undefined
-);
+const ThemeContext = React.createContext<ThemeContextType | undefined>(undefined);
 
 const STORAGE_KEY = "assignbridge-theme";
 
@@ -24,25 +22,35 @@ function applyTheme(theme: Theme) {
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = React.useState<Theme>("light");
+  const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
-    const savedTheme = sessionStorage.getItem(STORAGE_KEY) as Theme | null;
-    const initialTheme = savedTheme === "dark" ? "dark" : "light";
+    const savedTheme = localStorage.getItem(STORAGE_KEY) as Theme | null;
+
+    let initialTheme: Theme = "light";
+
+    if (savedTheme === "light" || savedTheme === "dark") {
+      initialTheme = savedTheme;
+    } else {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      initialTheme = prefersDark ? "dark" : "light";
+    }
 
     setThemeState(initialTheme);
     applyTheme(initialTheme);
+    setMounted(true);
   }, []);
 
   const setTheme = React.useCallback((newTheme: Theme) => {
     setThemeState(newTheme);
-    sessionStorage.setItem(STORAGE_KEY, newTheme);
+    localStorage.setItem(STORAGE_KEY, newTheme);
     applyTheme(newTheme);
   }, []);
 
   const toggleTheme = React.useCallback(() => {
     setThemeState((prev) => {
       const nextTheme = prev === "dark" ? "light" : "dark";
-      sessionStorage.setItem(STORAGE_KEY, nextTheme);
+      localStorage.setItem(STORAGE_KEY, nextTheme);
       applyTheme(nextTheme);
       return nextTheme;
     });
@@ -56,6 +64,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }),
     [theme, setTheme, toggleTheme]
   );
+
+  if (!mounted) {
+    return null;
+  }
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

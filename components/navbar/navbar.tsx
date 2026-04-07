@@ -72,13 +72,13 @@ export default function Navbar() {
           >
             {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-        </div>
+         </div>
       </nav>
       <div
         className={`${styles.mobileMenu} ${
           isMenuOpen ? styles.mobileMenuOpen : ""
         }`}
-      >
+       >
         <div className={styles.mobileNavLinks}>
           {navItems.map((item) => (
             <Link
