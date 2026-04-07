@@ -15,8 +15,6 @@ import {
   School,
   GraduationCap,
   Shield,
-  ChevronLeft,
-  ChevronRight,
   Settings,
   HelpCircle,
   LogOut,
@@ -27,7 +25,6 @@ import {
   Award,
   PanelLeft,
   X,
-  Search,
 } from "lucide-react";
 
 // ============= Types =============
@@ -122,6 +119,13 @@ const teacherNavGroups: NavGroup[] = [
     ],
   },
   {
+    label: "Students",
+    items: [
+      { title: "Student List", href: "/teacher/students", icon: Users },
+      { title: "Grades", href: "/teacher/grades", icon: BarChart3 },
+    ],
+  },
+  {
     label: "Communication",
     items: [
       { title: "Announcements", href: "/teacher/announcements", icon: Bell },
@@ -155,6 +159,7 @@ const studentNavGroups: NavGroup[] = [
 
 const generalNavItems: NavItem[] = [
   { title: "Profile", href: "/profile", icon: User },
+  { title: "Notifications", href: "/notifications", icon: Bell, badge: 4 },
 ];
 
 const bottomNavItems: NavItem[] = [
@@ -557,34 +562,6 @@ const SidebarMenuItem = React.memo(function SidebarMenuItem({
   );
 });
 
-// ============= Sidebar Collapse Button =============
-
-function SidebarCollapseButton({
-  className,
-  ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  const { collapsed, toggleSidebar } = useSidebar();
-
-  return (
-    <button
-      onClick={toggleSidebar}
-      aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-      aria-expanded={!collapsed}
-      className={cn(
-        "absolute -right-3 top-7 z-20 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm transition-all duration-300 hover:bg-slate-50 hover:text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500 dark:hover:bg-slate-700",
-        className,
-      )}
-      {...props}
-    >
-      {collapsed ? (
-        <ChevronRight className="h-3 w-3" aria-hidden="true" />
-      ) : (
-        <ChevronLeft className="h-3 w-3" aria-hidden="true" />
-      )}
-    </button>
-  );
-}
-
 // ============= Role Badge =============
 
 interface RoleBadgeProps {
@@ -754,9 +731,7 @@ export function AppSidebar({ role = "student" }: AppSidebarProps) {
     </Sidebar>
   );
 }
-
 // ============= Exports =============
-
 export {
   SidebarProvider,
   useSidebar,

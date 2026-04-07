@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   BookOpen,
   Clock,
@@ -18,6 +19,9 @@ import {
   Download,
   Eye,
   Upload,
+  ClipboardList,
+  BarChart3,
+  UserCheck,
 } from "lucide-react";
 import {
   BarChart,
@@ -397,6 +401,78 @@ export default function StudentDashboardPage() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+
+          {/* Quick Access Cards */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Link href="/student/assignments">
+              <Card className="h-full cursor-pointer border-slate-200 hover:border-blue-300 hover:shadow-md dark:border-slate-700 dark:hover:border-blue-500/50 transition-all group">
+                <CardContent className="flex items-center gap-4 p-5">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 group-hover:scale-110 transition-transform">
+                    <ClipboardList className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-white">
+                      Assignments
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      View your assignments
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/student/submissions">
+              <Card className="h-full cursor-pointer border-slate-200 hover:border-amber-300 hover:shadow-md dark:border-slate-700 dark:hover:border-amber-500/50 transition-all group">
+                <CardContent className="flex items-center gap-4 p-5">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 group-hover:scale-110 transition-transform">
+                    <Clock className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-white">
+                      Pending
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      View pending submissions
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/student/grades">
+              <Card className="h-full cursor-pointer border-slate-200 hover:border-green-300 hover:shadow-md dark:border-slate-700 dark:hover:border-green-500/50 transition-all group">
+                <CardContent className="flex items-center gap-4 p-5">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400 group-hover:scale-110 transition-transform">
+                    <BarChart3 className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-white">
+                      Grade Report
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      View your grades
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/student/classes">
+              <Card className="h-full cursor-pointer border-slate-200 hover:border-purple-300 hover:shadow-md dark:border-slate-700 dark:hover:border-purple-500/50 transition-all group">
+                <CardContent className="flex items-center gap-4 p-5">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400 group-hover:scale-110 transition-transform">
+                    <UserCheck className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-white">
+                      Student List
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Browse classmates
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
 
           {/* Alerts & Quick Actions */}
