@@ -9,6 +9,11 @@ import {
   User,
   Users,
   BarChart3,
+  Clock,
+  Inbox,
+  TrendingUp,
+  Target,
+  Award,
 } from "lucide-react";
 
 import type { UserRole } from "@/lib/types/user";
@@ -40,6 +45,31 @@ export const navigationByRole: Record<UserRole, NavigationItem[]> = {
       title: "Class Management",
       href: "/admin/classes",
       icon: School,
+    },
+    {
+      title: "All Submissions",
+      href: "/admin/submissions",
+      icon: Inbox,
+    },
+    {
+      title: "Pending Review",
+      href: "/admin/viewpanding",
+      icon: Clock,
+    },
+    {
+      title: "Assignment Analytics",
+      href: "/admin/assignmentanalytics",
+      icon: TrendingUp,
+    },
+    {
+      title: "Class-wise Summary",
+      href: "/admin/class-wisesummary",
+      icon: Target,
+    },
+    {
+      title: "Grade Report",
+      href: "/admin/gradereport",
+      icon: Award,
     },
     {
       title: "Reports",

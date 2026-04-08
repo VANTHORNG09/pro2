@@ -25,6 +25,12 @@ import {
   Award,
   PanelLeft,
   X,
+  Clock,
+  Inbox,
+  TrendingUp,
+  Target,
+  ChevronRight,
+  Sparkles,
 } from "lucide-react";
 
 // ============= Types =============
@@ -91,9 +97,42 @@ const adminNavGroups: NavGroup[] = [
     ],
   },
   {
-    label: "Analytics",
+    label: "Submissions",
+    items: [
+      {
+        title: "All Submissions",
+        href: "/admin/submissions",
+        icon: Inbox,
+        badge: 14,
+      },
+      {
+        title: "Pending Review",
+        href: "/admin/viewpanding",
+        icon: Clock,
+        badge: 8,
+      },
+    ],
+  },
+  {
+    label: "Analytics & Reports",
     items: [
       { title: "Reports", href: "/admin/reports", icon: BarChart3 },
+      {
+        title: "Assignment Analytics",
+        href: "/admin/assignmentanalytics",
+        icon: TrendingUp,
+      },
+      {
+        title: "Class-wise Summary",
+        href: "/admin/class-wisesummary",
+        icon: Target,
+      },
+      { title: "Grade Report", href: "/admin/gradereport", icon: Award },
+      {
+        title: "Student Performance",
+        href: "/admin/studentperformance",
+        icon: Users,
+      },
       { title: "Activity Logs", href: "/admin/logs", icon: History },
     ],
   },

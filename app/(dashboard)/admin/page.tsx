@@ -265,7 +265,7 @@ export default function AdminDashboardPage() {
                 </CardContent>
               </Card>
             </Link>
-            <Link href="/admin/submissions">
+            <Link href="/admin/viewpanding">
               <Card className="h-full cursor-pointer border-slate-200 hover:border-amber-300 hover:shadow-md dark:border-slate-700 dark:hover:border-amber-500/50 transition-all group">
                 <CardContent className="flex items-center gap-4 p-5">
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 group-hover:scale-110 transition-transform">

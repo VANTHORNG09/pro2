@@ -9,7 +9,25 @@ export const submissionKeys = {
   list: (assignmentId: number, filters: SubmissionFilters) => [...submissionKeys.lists(), assignmentId, filters] as const,
   mySubmission: (assignmentId: number) => [...submissionKeys.all, 'mySubmission', assignmentId] as const,
   allMySubmissions: () => [...submissionKeys.all, 'allMySubmissions'] as const,
+  allPending: (filters: SubmissionFilters) => [...submissionKeys.all, 'allPending', filters] as const,
+  allSubmissions: (filters: SubmissionFilters) => [...submissionKeys.all, 'allSubmissions', filters] as const,
 };
+
+// Get all submissions across all assignments (admin view)
+export function useAllSubmissions(filters?: SubmissionFilters) {
+  return useQuery({
+    queryKey: submissionKeys.allSubmissions(filters || {}),
+    queryFn: () => submissionsAPI.getAll(filters),
+  });
+}
+
+// Get all pending submissions across all assignments (admin view)
+export function useAllPendingSubmissions(filters?: SubmissionFilters) {
+  return useQuery({
+    queryKey: submissionKeys.allPending(filters || {}),
+    queryFn: () => submissionsAPI.getAllPending(filters),
+  });
+}
 
 // Get all submissions for an assignment (teacher view)
 export function useSubmissions(assignmentId: number, filters?: SubmissionFilters) {
