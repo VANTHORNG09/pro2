@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useState } from "react";
 import {
   Search,
   Filter,
@@ -12,23 +12,13 @@ import {
   RotateCcw,
   FileText,
   Users,
-  Loader2,
-  ChevronDown,
-  BarChart3,
+  ArrowUpRight,
+  ArrowDownRight,
 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -42,30 +32,76 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogClose,
 } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GradingInterface } from "@/components/assignments/GradingInterface";
+import { Separator } from "@/components/ui/separator";
+
 import { useAllSubmissions } from "@/lib/hooks/queries/useSubmissions";
-import { Submission, SubmissionFilters, SubmissionStatus } from "@/lib/types/assignment";
+import { useToast } from "@/hooks/use-toast";
+import { GradingInterface } from "@/components/assignments/GradingInterface";
+import type { Submission, SubmissionStatus } from "@/lib/types/assignment";
 
-// --- Helper Components ---
-
-function StatusBadge({ status }: { status: SubmissionStatus | string }) {
-  const variants: Record<string, string> = {
-    pending: "bg-slate-500/10 text-slate-600 border-slate-500/20 dark:bg-slate-500/20 dark:text-slate-400 dark:border-slate-500/30",
-    submitted: "bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30",
-    graded: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30",
-    returned: "bg-violet-500/10 text-violet-600 border-violet-500/20 dark:bg-violet-500/20 dark:text-violet-400 dark:border-violet-500/30",
-    late: "bg-red-500/10 text-red-600 border-red-500/20 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30",
-  };
-
+// ─── Stat Card Component ──────────────────────────────────────────────
+function DashboardStat({
+  title,
+  value,
+  subtitle,
+  icon,
+  trend,
+}: {
+  title: string;
+  value: number | string;
+  subtitle: string;
+  icon: React.ReactNode;
+  trend?: { value: string; positive: boolean };
+}) {
   return (
-    <Badge className={`capitalize ${variants[status] || variants.pending}`}>
-      {status}
-    </Badge>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <div className="text-muted-foreground">{icon}</div>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          {trend &&
+            (trend.positive ? (
+              <ArrowUpRight className="h-3 w-3 text-emerald-500" />
+            ) : (
+              <ArrowDownRight className="h-3 w-3 text-red-500" />
+            ))}
+          {trend && (
+            <span className={trend.positive ? "text-emerald-500" : "text-red-500"}>
+              {trend.value}
+            </span>
+          )}
+          <span>{subtitle}</span>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
+// ─── Helper Functions ─────────────────────────────────────────────────
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "—";
   return new Date(dateStr).toLocaleDateString("en-US", {
@@ -73,14 +109,6 @@ function formatDate(dateStr: string | null): string {
     day: "numeric",
     year: "numeric",
   });
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 Bytes";
-  const k = 1024;
-  const sizes = ["Bytes", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
 }
 
 function getInitials(name: string): string {
@@ -92,153 +120,24 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-function getAvatarColor(name: string): string {
-  const colors = [
-    "bg-blue-500",
-    "bg-emerald-500",
-    "bg-amber-500",
-    "bg-purple-500",
-    "bg-rose-500",
-    "bg-cyan-500",
-    "bg-indigo-500",
-    "bg-teal-500",
-  ];
-  const hash = name.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  return colors[hash % colors.length];
-}
-
-// --- Submissions Table Row ---
-
-function SubmissionRow({
-  submission,
-  selected,
-  onSelect,
-  onView,
-  onDownloadFiles,
-}: {
-  submission: Submission;
-  selected: boolean;
-  onSelect: (checked: boolean) => void;
-  onView: () => void;
-  onDownloadFiles: () => void;
-}) {
-  return (
-    <TableRow>
-      <TableCell>
-        <Checkbox
-          checked={selected}
-          onCheckedChange={(checked) => onSelect(checked as boolean)}
-        />
-      </TableCell>
-      <TableCell>
-        <div className="flex items-center gap-3">
-          <div
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white ${getAvatarColor(submission.studentName)}`}
-          >
-            {getInitials(submission.studentName)}
-          </div>
-          <div>
-            <p className="font-medium text-sm text-slate-800 dark:text-white">
-              {submission.studentName}
-            </p>
-            <p className="text-xs text-slate-400">{submission.studentEmail}</p>
-          </div>
-        </div>
-      </TableCell>
-      <TableCell>
-        <p className="text-sm text-slate-700 dark:text-slate-300">
-          {submission.assignmentName ?? "—"}
-        </p>
-      </TableCell>
-      <TableCell className="text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
-        {formatDate(submission.submittedAt)}
-      </TableCell>
-      <TableCell className="text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
-        {submission.status === "graded" || submission.status === "returned" ? (
-          <span className="font-medium">
-            {submission.grade} / {submission.maxPoints}
-          </span>
-        ) : (
-          <span className="text-slate-400">—</span>
-        )}
-      </TableCell>
-      <TableCell>
-        {submission.files.length > 0 ? (
-          <div className="space-y-0.5">
-            {submission.files.map((f) => (
-              <p
-                key={f.id}
-                className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[180px]"
-                title={f.fileName}
-              >
-                {f.fileName}
-              </p>
-            ))}
-          </div>
-        ) : (
-          <span className="text-xs text-slate-400">No files</span>
-        )}
-      </TableCell>
-      <TableCell>
-        <div className="flex items-center gap-1.5">
-          <StatusBadge status={submission.status} />
-          {submission.isLate && (
-            <Badge
-              variant="outline"
-              className="text-xs border-red-500/30 text-red-600 dark:text-red-400"
-            >
-              Late
-            </Badge>
-          )}
-        </div>
-      </TableCell>
-      <TableCell className="text-right">
-        <div className="flex items-center justify-end gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            title="View & Grade"
-            onClick={onView}
-          >
-            <Eye className="h-3.5 w-3.5 text-slate-500" />
-          </Button>
-          {submission.files.length > 0 && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              title="Download Files"
-              onClick={onDownloadFiles}
-            >
-              <Download className="h-3.5 w-3.5 text-slate-500" />
-            </Button>
-          )}
-        </div>
-      </TableCell>
-    </TableRow>
-  );
-}
-
-// --- Main Page ---
-
+// ─── Main Page ────────────────────────────────────────────────────────
 export default function AdminSubmissionsPage() {
-  const [search, setSearch] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState<SubmissionStatus | "all">("all");
-  const [selectedIds, setSelectedIds] = React.useState<Set<number>>(new Set());
-  const [selectedSubmission, setSelectedSubmission] = React.useState<Submission | null>(null);
-  const [activeTab, setActiveTab] = React.useState("all");
+  const { toast } = useToast();
 
-  const filters: SubmissionFilters = {
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<SubmissionStatus | "all">("all");
+  const [activeTab, setActiveTab] = useState("all");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+
+  const filters = {
     status: statusFilter === "all" ? undefined : statusFilter,
     search: search || undefined,
   };
 
-  const { data, isLoading, isError } = useAllSubmissions(filters);
+  const { data: submissions = [], isLoading, isError } = useAllSubmissions(filters);
 
-  const submissions = (data && data.length > 0) ? data : [];
-
-  // Derive tab counts
+  // Derive counts
   const counts = {
     all: submissions.length,
     pending: submissions.filter((s) => s.status === "pending").length,
@@ -248,15 +147,17 @@ export default function AdminSubmissionsPage() {
     returned: submissions.filter((s) => s.status === "returned").length,
   };
 
+  const totalSubmissions = submissions.length;
+  const totalGraded = submissions.filter((s) => s.grade !== null && s.grade !== undefined).length;
+  const totalPending = submissions.filter((s) => s.status === "pending" || s.status === "submitted").length;
+  const totalLate = counts.late;
+  const totalReturned = counts.returned;
+
+  // Filter by active tab
   const filtered = submissions.filter((s) => {
-    const matchTab =
-      activeTab === "all" ||
-      activeTab === "late"
-        ? activeTab === "late"
-          ? s.isLate || s.status === "late"
-          : true
-        : s.status === activeTab;
-    return matchTab;
+    if (activeTab === "late") return s.isLate || s.status === "late";
+    if (activeTab === "all") return true;
+    return s.status === activeTab;
   });
 
   const isAllSelected = filtered.length > 0 && filtered.every((s) => selectedIds.has(s.id));
@@ -305,10 +206,13 @@ export default function AdminSubmissionsPage() {
     link.download = `submissions_${activeTab}_${new Date().toISOString().split("T")[0]}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+
+    toast({ title: "Export complete", description: `Exported ${dataToExport.length} submissions to CSV.` });
   };
 
   const handleDownloadSelected = () => {
     const selectedSubmissions = submissions.filter((s) => selectedIds.has(s.id));
+    let downloaded = 0;
     selectedSubmissions.forEach((s) => {
       s.files.forEach((f) => {
         const a = document.createElement("a");
@@ -317,8 +221,10 @@ export default function AdminSubmissionsPage() {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        downloaded++;
       });
     });
+    toast({ title: "Download started", description: `Downloading ${downloaded} file(s).` });
   };
 
   const handleDownloadFiles = (submission: Submission) => {
@@ -333,139 +239,73 @@ export default function AdminSubmissionsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-800 dark:text-white">
-            All Submissions
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <h1 className="text-2xl font-bold tracking-tight">All Submissions</h1>
+          <p className="text-sm text-muted-foreground">
             Monitor, review, and manage all student submissions platform-wide.
           </p>
         </div>
         <div className="flex gap-2">
           {selectedIds.size > 0 && (
-            <Button variant="outline" className="gap-2" onClick={handleDownloadSelected}>
-              <Download className="h-4 w-4" />
+            <Button variant="outline" onClick={handleDownloadSelected}>
+              <Download className="mr-2 h-4 w-4" />
               Download Selected ({selectedIds.size})
             </Button>
           )}
-          <Button variant="outline" className="gap-2" onClick={handleExportCSV}>
-            <BarChart3 className="h-4 w-4" />
+          <Button variant="outline" onClick={handleExportCSV}>
+            <FileText className="mr-2 h-4 w-4" />
             Export CSV
           </Button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg p-2 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-              <FileText className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-slate-800 dark:text-white">{counts.all}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Total</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg p-2 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-              <Clock className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-slate-800 dark:text-white">{counts.pending}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Pending</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
-              <Users className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-slate-800 dark:text-white">{counts.submitted}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Submitted</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg p-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-slate-800 dark:text-white">{counts.graded}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Graded</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg p-2 bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400">
-              <RotateCcw className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-slate-800 dark:text-white">{counts.returned}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Returned</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg p-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400">
-              <AlertTriangle className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-slate-800 dark:text-white">{counts.late}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Late</p>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Stats Grid */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <DashboardStat
+          title="Total Submissions"
+          value={totalSubmissions}
+          subtitle="all statuses"
+          icon={<FileText className="h-4 w-4" />}
+        />
+        <DashboardStat
+          title="Graded"
+          value={totalGraded}
+          subtitle="completed reviews"
+          icon={<CheckCircle2 className="h-4 w-4" />}
+          trend={
+            totalSubmissions > 0
+              ? { value: `${Math.round((totalGraded / totalSubmissions) * 100)}% graded`, positive: true }
+              : undefined
+          }
+        />
+        <DashboardStat
+          title="Pending"
+          value={totalPending}
+          subtitle="awaiting review"
+          icon={<Clock className="h-4 w-4" />}
+        />
+        <DashboardStat
+          title="Late"
+          value={totalLate}
+          subtitle="past due date"
+          icon={<AlertTriangle className="h-4 w-4" />}
+          trend={totalLate > 0 ? { value: `${totalLate} late`, positive: false } : undefined}
+        />
+        <DashboardStat
+          title="Returned"
+          value={totalReturned}
+          subtitle="sent back to student"
+          icon={<RotateCcw className="h-4 w-4" />}
+        />
       </div>
 
-      {/* Filters */}
+      {/* Main Content Card */}
       <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input
-                placeholder="Search students, emails, or assignments..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select
-              value={statusFilter}
-              onValueChange={(v) => setStatusFilter(v as SubmissionStatus | "all")}
-            >
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <Filter className="mr-2 h-4 w-4 text-slate-400" />
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="submitted">Submitted</SelectItem>
-                <SelectItem value="graded">Graded</SelectItem>
-                <SelectItem value="returned">Returned</SelectItem>
-                <SelectItem value="late">Late</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Tabs + Table */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+        <CardHeader>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle>Submissions</CardTitle>
               <CardDescription>
@@ -473,40 +313,60 @@ export default function AdminSubmissionsPage() {
                   "Loading submissions..."
                 ) : (
                   <>
-                    {filtered.length} submission{filtered.length !== 1 ? "s" : ""} found
+                    {filtered.length} submission(s) found
                     {selectedIds.size > 0 && ` · ${selectedIds.size} selected`}
                   </>
                 )}
               </CardDescription>
             </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search students or assignments..."
+                  className="pl-9"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as SubmissionStatus | "all")}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="submitted">Submitted</SelectItem>
+                  <SelectItem value="graded">Graded</SelectItem>
+                  <SelectItem value="returned">Returned</SelectItem>
+                  <SelectItem value="late">Late</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
+        <Separator />
         <CardContent className="p-0">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="px-6 pt-2 pb-4">
-            <TabsList className="grid w-full grid-cols-6">
-              <TabsTrigger value="all">All ({counts.all})</TabsTrigger>
-              <TabsTrigger value="pending">Pending ({counts.pending})</TabsTrigger>
-              <TabsTrigger value="submitted">Submitted ({counts.submitted})</TabsTrigger>
-              <TabsTrigger value="graded">Graded ({counts.graded})</TabsTrigger>
-              <TabsTrigger value="late">Late ({counts.late})</TabsTrigger>
-              <TabsTrigger value="returned">Returned ({counts.returned})</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          {/* Status Tabs */}
+          <div className="px-6 pt-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-6">
+                <TabsTrigger value="all">All ({counts.all})</TabsTrigger>
+                <TabsTrigger value="pending">Pending ({counts.pending})</TabsTrigger>
+                <TabsTrigger value="submitted">Submitted ({counts.submitted})</TabsTrigger>
+                <TabsTrigger value="graded">Graded ({counts.graded})</TabsTrigger>
+                <TabsTrigger value="late">Late ({counts.late})</TabsTrigger>
+                <TabsTrigger value="returned">Returned ({counts.returned})</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
 
-          {isLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-            </div>
-          ) : isError ? (
-            <div className="flex items-center justify-center py-16 text-slate-500">
-              <AlertTriangle className="h-5 w-5 mr-2" />
-              Failed to load submissions.
-            </div>
-          ) : (
+          {/* Table */}
+          <div className="mt-4">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[40px]">
+                  <TableHead className="w-10 pl-6">
                     <Checkbox
                       checked={isAllSelected}
                       onCheckedChange={(checked) => toggleSelectAll(checked as boolean)}
@@ -514,41 +374,133 @@ export default function AdminSubmissionsPage() {
                   </TableHead>
                   <TableHead>Student</TableHead>
                   <TableHead>Assignment</TableHead>
-                  <TableHead>Submitted</TableHead>
+                  <TableHead className="hidden md:table-cell">Submitted</TableHead>
                   <TableHead>Grade</TableHead>
-                  <TableHead>Files</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="w-[100px] text-right pr-6">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.length === 0 ? (
+                {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="h-32 text-center text-slate-500">
-                      {search || statusFilter !== "all" || activeTab !== "all"
-                        ? "No submissions match your filters."
-                        : "No submissions found."}
+                    <TableCell colSpan={7} className="h-32 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        <span className="text-sm">Loading submissions...</span>
+                      </div>
                     </TableCell>
                   </TableRow>
-                ) : (
+                ) : isError ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-32 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2 text-destructive">
+                        <AlertTriangle className="h-8 w-8" />
+                        <p className="text-sm">Failed to load submissions</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : filtered.length > 0 ? (
                   filtered.map((s) => (
-                    <SubmissionRow
-                      key={s.id}
-                      submission={s}
-                      selected={selectedIds.has(s.id)}
-                      onSelect={(checked) => toggleSelect(s.id, checked)}
-                      onView={() => setSelectedSubmission(s)}
-                      onDownloadFiles={() => handleDownloadFiles(s)}
-                    />
+                    <TableRow key={s.id} className="hover:bg-muted/50">
+                      <TableCell className="pl-6">
+                        <Checkbox
+                          checked={selectedIds.has(s.id)}
+                          onCheckedChange={(checked) => toggleSelect(s.id, checked as boolean)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+                              {getInitials(s.studentName)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">{s.studentName}</p>
+                            <p className="truncate text-xs text-muted-foreground">{s.studentEmail}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm truncate max-w-[200px]">{s.assignmentName || "—"}</p>
+                      </TableCell>
+                      <TableCell className="hidden text-sm text-muted-foreground md:table-cell whitespace-nowrap">
+                        {formatDate(s.submittedAt)}
+                      </TableCell>
+                      <TableCell>
+                        {s.grade !== null && s.grade !== undefined ? (
+                          <span className="text-sm font-medium">
+                            {s.grade} / {s.maxPoints}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`h-2 w-2 rounded-full ${
+                              s.status === "graded"
+                                ? "bg-emerald-500"
+                                : s.status === "submitted"
+                                  ? "bg-blue-500"
+                                  : s.status === "late" || s.isLate
+                                    ? "bg-red-500"
+                                    : s.status === "returned"
+                                      ? "bg-violet-500"
+                                      : "bg-muted"
+                            }`}
+                          />
+                          <span className="text-sm capitalize">{s.status}</span>
+                          {s.isLate && s.status !== "late" && (
+                            <Badge variant="outline" className="text-xs border-red-500/30 text-red-500">
+                              Late
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right pr-6">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            onClick={() => setSelectedSubmission(s)}
+                            title="View & Grade"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          {s.files.length > 0 && (
+                            <Button
+                              size="icon-sm"
+                              variant="ghost"
+                              onClick={() => handleDownloadFiles(s)}
+                              title="Download Files"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-32 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                        <FileText className="h-8 w-8" />
+                        <p className="text-sm">No submissions found</p>
+                        <p className="text-xs">Try adjusting your filters or search query</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 )}
               </TableBody>
             </Table>
-          )}
+          </div>
         </CardContent>
       </Card>
 
-      {/* Grading Dialog */}
+      {/* ─── Grading Dialog ─────────────────────────────────────────── */}
       <Dialog open={!!selectedSubmission} onOpenChange={(open) => !open && setSelectedSubmission(null)}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -568,6 +520,11 @@ export default function AdminSubmissionsPage() {
               }}
             />
           )}
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Close</Button>
+            </DialogClose>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -1,24 +1,45 @@
 "use client";
 
-import * as React from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Plus,
   Search,
   Filter,
-  MoreHorizontal,
   Eye,
-  Edit,
+  Edit2,
   Trash2,
-  FileText,
   Download,
   Send,
   Archive,
-  Copy,
+  ArrowUpRight,
+  ArrowDownRight,
+  Calendar,
+  MapPin,
+  Clock,
+  FileText,
+  Users,
 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -27,388 +48,680 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 
-// --- Mock Data ---
+import {
+  useAssignments,
+  useDeleteAssignment,
+  usePublishAssignment,
+  useCloseAssignment,
+} from "@/lib/hooks/queries/useAssignments";
+import { useToast } from "@/hooks/use-toast";
+import type { Assignment, AssignmentStatus } from "@/lib/types/assignment";
 
-const assignments = [
-  {
-    id: "ASG-001",
-    title: "Data Structures Final Project",
-    class: "CS-301",
-    className: "Data Structures & Algorithms",
-    teacher: "Dr. Sarah Chen",
-    teacherId: "T-001",
-    dueDate: "2026-04-15",
-    createdAt: "2026-03-28",
-    status: "published",
-    submissions: 42,
-    totalStudents: 58,
-    maxPoints: 100,
-    fileType: "PDF, ZIP",
-  },
-  {
-    id: "ASG-002",
-    title: "Organic Chemistry Lab Report",
-    class: "CHEM-202",
-    className: "Organic Chemistry",
-    teacher: "Prof. James Miller",
-    teacherId: "T-002",
-    dueDate: "2026-04-12",
-    createdAt: "2026-03-25",
-    status: "closed",
-    submissions: 35,
-    totalStudents: 35,
-    maxPoints: 50,
-    fileType: "PDF",
-  },
-  {
-    id: "ASG-003",
-    title: "Calculus Problem Set 7",
-    class: "MATH-201",
-    className: "Calculus II",
-    teacher: "Dr. Emily Rodriguez",
-    teacherId: "T-003",
-    dueDate: "2026-04-20",
-    createdAt: "2026-04-01",
-    status: "published",
-    submissions: 12,
-    totalStudents: 65,
-    maxPoints: 75,
-    fileType: "PDF, DOCX",
-  },
-  {
-    id: "ASG-004",
-    title: "Modern History Essay",
-    class: "HIST-101",
-    className: "Modern History",
-    teacher: "Prof. Michael Brown",
-    teacherId: "T-004",
-    dueDate: "2026-04-25",
-    createdAt: "2026-04-03",
-    status: "draft",
-    submissions: 0,
-    totalStudents: 72,
-    maxPoints: 100,
-    fileType: "DOCX, PDF",
-  },
-  {
-    id: "ASG-005",
-    title: "Machine Learning Assignment 3",
-    class: "CS-450",
-    className: "Machine Learning Fundamentals",
-    teacher: "Dr. Alex Kumar",
-    teacherId: "T-005",
-    dueDate: "2026-04-18",
-    createdAt: "2026-03-30",
-    status: "published",
-    submissions: 28,
-    totalStudents: 45,
-    maxPoints: 120,
-    fileType: "ZIP, PDF",
-  },
-  {
-    id: "ASG-006",
-    title: "English Literature Review",
-    class: "ENG-205",
-    className: "English Literature",
-    teacher: "Prof. Lisa Wang",
-    teacherId: "T-006",
-    dueDate: "2026-04-10",
-    createdAt: "2026-03-20",
-    status: "closed",
-    submissions: 50,
-    totalStudents: 50,
-    maxPoints: 80,
-    fileType: "PDF",
-  },
-  {
-    id: "ASG-007",
-    title: "Database Schema Design",
-    class: "CS-350",
-    className: "Database Management Systems",
-    teacher: "Prof. Alex Kumar",
-    teacherId: "T-005",
-    dueDate: "2026-04-22",
-    createdAt: "2026-04-05",
-    status: "published",
-    submissions: 18,
-    totalStudents: 45,
-    maxPoints: 90,
-    fileType: "PDF, SQL",
-  },
-  {
-    id: "ASG-008",
-    title: "Operating Systems Lab 5",
-    class: "CS-301",
-    className: "Data Structures & Algorithms",
-    teacher: "Dr. Sarah Chen",
-    teacherId: "T-001",
-    dueDate: "2026-04-28",
-    createdAt: "2026-04-04",
-    status: "draft",
-    submissions: 0,
-    totalStudents: 58,
-    maxPoints: 60,
-    fileType: "ZIP",
-  },
-];
-
-const statsData = [
-  { label: "Total Assignments", value: assignments.length, icon: FileText, color: "text-blue-500" },
-  {
-    label: "Published",
-    value: assignments.filter((a) => a.status === "published").length,
-    icon: Send,
-    color: "text-green-500",
-  },
-  {
-    label: "Drafts",
-    value: assignments.filter((a) => a.status === "draft").length,
-    icon: Edit,
-    color: "text-yellow-500",
-  },
-  {
-    label: "Closed",
-    value: assignments.filter((a) => a.status === "closed").length,
-    icon: Archive,
-    color: "text-slate-500",
-  },
-];
-
-// --- Helper Components ---
-
-function StatusBadge({ status }: { status: string }) {
-  const variants: Record<string, string> = {
-    published: "bg-green-500/10 text-green-600 border-green-500/20 dark:bg-green-500/20 dark:text-green-400 dark:border-green-500/30",
-    draft: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20 dark:bg-yellow-500/20 dark:text-yellow-400 dark:border-yellow-500/30",
-    closed: "bg-slate-500/10 text-slate-500 border-slate-500/20 dark:bg-slate-500/20 dark:text-slate-400 dark:border-slate-500/30",
-  };
-
+// ─── Stat Card Component ──────────
+function DashboardStat({
+  title,
+  value,
+  subtitle,
+  icon,
+  trend,
+}: {
+  title: string;
+  value: number | string;
+  subtitle: string;
+  icon: React.ReactNode;
+  trend?: { value: string; positive: boolean };
+}) {
   return (
-    <Badge className={`capitalize ${variants[status] || variants.draft}`}>
-      {status}
-    </Badge>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <div className="text-muted-foreground">{icon}</div>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          {trend &&
+            (trend.positive ? (
+              <ArrowUpRight className="h-3 w-3 text-emerald-500" />
+            ) : (
+              <ArrowDownRight className="h-3 w-3 text-red-500" />
+            ))}
+          {trend && (
+            <span className={trend.positive ? "text-emerald-500" : "text-red-500"}>
+              {trend.value}
+            </span>
+          )}
+          <span>{subtitle}</span>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
+// ─── Detail Item Sub-Component ────────────────────────────────────────
+function DetailItem({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-2 rounded-lg border p-3">
+      <div className="text-muted-foreground">{icon}</div>
+      <div>
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-sm font-medium">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Completion Bar Component ─────────────────────────────────────────
 function CompletionBar({ submitted, total }: { submitted: number; total: number }) {
   const pct = total > 0 ? Math.round((submitted / total) * 100) : 0;
   const color =
     pct >= 80
-      ? "bg-green-500"
+      ? "bg-emerald-500"
       : pct >= 50
-        ? "bg-yellow-500"
+        ? "bg-amber-500"
         : pct > 0
           ? "bg-orange-500"
-          : "bg-slate-300 dark:bg-slate-600";
+          : "bg-muted";
 
   return (
     <div className="flex items-center gap-2">
-      <div className="w-20 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+      <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+      <span className="text-xs text-muted-foreground tabular-nums">
         {submitted}/{total} ({pct}%)
       </span>
     </div>
   );
 }
 
-// --- Main Page ---
+// ─── Main Page ────────────────────────────────────────────────────────
+export default function AdminAssignmentsPage() {
+  const router = useRouter();
+  const { toast } = useToast();
 
-export default function AdminAssignmentPage() {
-  const [search, setSearch] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState("all");
-  const [classFilter, setClassFilter] = React.useState("all");
+  const { data: assignments = [], isLoading } = useAssignments({});
+  const deleteAssignment = useDeleteAssignment();
+  const publishAssignment = usePublishAssignment();
+  const closeAssignment = useCloseAssignment();
 
-  const uniqueClasses = Array.from(new Map(assignments.map((a) => [a.class, a.className])).entries());
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<AssignmentStatus | "all">("all");
+  const [activeTab, setActiveTab] = useState("all");
 
+  // Modal state
+  const [detailsAssignment, setDetailsAssignment] = useState<Assignment | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteAssignmentId, setDeleteAssignmentId] = useState<number | null>(null);
+
+  // Filters
   const filtered = assignments.filter((a) => {
-    const matchSearch =
-      a.title.toLowerCase().includes(search.toLowerCase()) ||
-      a.id.toLowerCase().includes(search.toLowerCase()) ||
-      a.teacher.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === "all" || a.status === statusFilter;
-    const matchClass = classFilter === "all" || a.class === classFilter;
-    return matchSearch && matchStatus && matchClass;
+    if (activeTab !== "all" && a.status !== activeTab) return false;
+    if (statusFilter !== "all" && a.status !== statusFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      return (
+        a.title.toLowerCase().includes(q) ||
+        a.className.toLowerCase().includes(q) ||
+        a.teacherName.toLowerCase().includes(q)
+      );
+    }
+    return true;
   });
 
+  // Stats
+  const stats = {
+    total: assignments.length,
+    published: assignments.filter((a) => a.status === "published").length,
+    draft: assignments.filter((a) => a.status === "draft").length,
+    closed: assignments.filter((a) => a.status === "closed").length,
+  };
+
+  const totalSubmissions = assignments.reduce((sum, a) => sum + (a.submissionCount || 0), 0);
+  const totalGraded = assignments.reduce((sum, a) => sum + (a.gradedCount || 0), 0);
+
+  const handleDelete = (id: number) => {
+    setDeleteAssignmentId(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deleteAssignmentId) {
+      deleteAssignment.mutate(deleteAssignmentId, {
+        onSuccess: () => {
+          toast({ title: "Assignment deleted", description: "The assignment has been removed successfully." });
+        },
+        onError: () => {
+          toast({ title: "Error", description: "Failed to delete assignment.", variant: "destructive" });
+        },
+        onSettled: () => {
+          setDeleteConfirmOpen(false);
+          setDeleteAssignmentId(null);
+        },
+      });
+    }
+  };
+
+  const handlePublish = (id: number) => {
+    publishAssignment.mutate(id, {
+      onSuccess: () => {
+        toast({ title: "Assignment published", description: "The assignment is now live." });
+      },
+      onError: () => {
+        toast({ title: "Error", description: "Failed to publish assignment.", variant: "destructive" });
+      },
+    });
+  };
+
+  const handleClose = (id: number) => {
+    closeAssignment.mutate(id, {
+      onSuccess: () => {
+        toast({ title: "Assignment closed", description: "No new submissions will be accepted." });
+      },
+      onError: () => {
+        toast({ title: "Error", description: "Failed to close assignment.", variant: "destructive" });
+      },
+    });
+  };
+
+  const openDetails = (a: Assignment) => {
+    setDetailsAssignment(a);
+  };
+
+  const closeDetails = () => {
+    setDetailsAssignment(null);
+  };
+
+  const uniqueClasses = Array.from(
+    new Map(assignments.map((a) => [a.classId, { code: a.classId, name: a.className }])).values()
+  );
+
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-800 dark:text-white">
-            Assignment Management
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <h1 className="text-2xl font-bold tracking-tight">Assignment Management</h1>
+          <p className="text-sm text-muted-foreground">
             Create, manage, and monitor assignments across all classes.
           </p>
         </div>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          New Assignment
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline">
+            <Download className="mr-2 h-4 w-4" />
+            Export
+          </Button>
+          <Button onClick={() => router.push("/teacher/assignments/new")}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Assignment
+          </Button>
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {statsData.map((stat) => (
-          <Card key={stat.label}>
-            <CardContent className="flex items-center gap-4 p-5">
-              <div className={`rounded-lg p-2.5 bg-slate-50 dark:bg-slate-800 ${stat.color}`}>
-                <stat.icon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-800 dark:text-white">{stat.value}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{stat.label}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      {/* Stats Grid */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <DashboardStat
+          title="Total Assignments"
+          value={stats.total}
+          subtitle={`${stats.published} published`}
+          icon={<FileText className="h-4 w-4" />}
+        />
+        <DashboardStat
+          title="Published"
+          value={stats.published}
+          subtitle="live assignments"
+          icon={<Send className="h-4 w-4" />}
+        />
+        <DashboardStat
+          title="Drafts"
+          value={stats.draft}
+          subtitle="pending review"
+          icon={<Edit2 className="h-4 w-4" />}
+        />
+        <DashboardStat
+          title="Total Submissions"
+          value={totalSubmissions}
+          subtitle={`${totalGraded} graded`}
+          icon={<Users className="h-4 w-4" />}
+          trend={
+            totalSubmissions > 0
+              ? { value: `${Math.round((totalGraded / totalSubmissions) * 100)}% graded`, positive: true }
+              : undefined
+          }
+        />
       </div>
 
-      {/* Filters */}
+      {/* Main Content Card */}
       <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input
-                placeholder="Search assignments..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[160px]">
-                <Filter className="mr-2 h-4 w-4 text-slate-400" />
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="published">Published</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={classFilter} onValueChange={setClassFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Class" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Classes</SelectItem>
-                {uniqueClasses.map(([code, name]) => (
-                  <SelectItem key={code} value={code}>
-                    {code} — {name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button variant="outline" size="icon" className="shrink-0">
-              <Download className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Assignments Table */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+        <CardHeader>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle>All Assignments</CardTitle>
-              <CardDescription>
-                {filtered.length} assignment{filtered.length !== 1 ? "s" : ""} found
-              </CardDescription>
+              <CardDescription>{filtered.length} assignment(s) found</CardDescription>
             </div>
-            <Button variant="outline" size="sm" className="gap-2">
-              <MoreHorizontal className="h-4 w-4" />
-              Bulk Actions
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search assignments..."
+                  className="pl-9"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as AssignmentStatus | "all")}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="published">Published</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
+        <Separator />
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[90px]">ID</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Class</TableHead>
-                <TableHead>Teacher</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead>Submissions</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
+          {/* Status Tabs */}
+          <div className="px-6 pt-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList>
+                <TabsTrigger value="all">All</TabsTrigger>
+                <TabsTrigger value="published">Published</TabsTrigger>
+                <TabsTrigger value="draft">Draft</TabsTrigger>
+                <TabsTrigger value="closed">Closed</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
+          {/* Table */}
+          <div className="mt-4">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={8} className="h-32 text-center text-slate-500">
-                    No assignments found.
-                  </TableCell>
+                  <TableHead className="pl-6">Assignment</TableHead>
+                  <TableHead>Class</TableHead>
+                  <TableHead>Teacher</TableHead>
+                  <TableHead>Due Date</TableHead>
+                  <TableHead>Submissions</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-[140px] text-right pr-6">Actions</TableHead>
                 </TableRow>
-              ) : (
-                filtered.map((a) => (
-                  <TableRow key={a.id}>
-                    <TableCell className="font-mono text-xs text-slate-500">{a.id}</TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-sm text-slate-800 dark:text-white">
-                          {a.title}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-0.5">{a.className}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="font-mono text-xs">
-                        {a.class}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-slate-600 dark:text-slate-300">
-                      {a.teacher}
-                    </TableCell>
-                    <TableCell className="text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                      {a.dueDate}
-                    </TableCell>
-                    <TableCell>
-                      <CompletionBar submitted={a.submissions} total={a.totalStudents} />
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={a.status} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title="View">
-                          <Eye className="h-3.5 w-3.5 text-slate-500" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit">
-                          <Edit className="h-3.5 w-3.5 text-slate-500" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Duplicate">
-                          <Copy className="h-3.5 w-3.5 text-slate-500" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10" title="Delete">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-32 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        <span className="text-sm">Loading assignments...</span>
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : filtered.length > 0 ? (
+                  filtered.map((a) => (
+                    <TableRow key={a.id} className="hover:bg-muted/50">
+                      <TableCell className="pl-6">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{a.title}</p>
+                          <p className="truncate text-sm text-muted-foreground">
+                            {a.description.slice(0, 60)}...
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-sm">{a.className}</p>
+                          <Badge variant="secondary" className="font-mono text-xs mt-1">
+                            #{a.classId}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-7 w-7">
+                            <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+                              {a.teacherName
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                                .slice(0, 2)
+                                .toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm">{a.teacherName}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                        {new Date(a.dueDate).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <CompletionBar
+                          submitted={a.submissionCount || 0}
+                          total={(a.gradedCount || 0) + (a.pendingCount || 0)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`h-2 w-2 rounded-full ${
+                              a.status === "published"
+                                ? "bg-emerald-500"
+                                : a.status === "closed"
+                                  ? "bg-amber-500"
+                                  : "bg-muted"
+                            }`}
+                          />
+                          <span className="text-sm capitalize">{a.status}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right pr-6">
+                        <div className="flex justify-end gap-1">
+                          <Button size="icon-sm" variant="ghost" onClick={() => openDetails(a)} title="View details">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          {a.status === "draft" && (
+                            <Button size="icon-sm" variant="ghost" onClick={() => handlePublish(a.id)} title="Publish">
+                              <Send className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {a.status === "published" && (
+                            <Button size="icon-sm" variant="ghost" onClick={() => handleClose(a.id)} title="Close">
+                              <Archive className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDelete(a.id)}
+                            title="Delete"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-32 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                        <FileText className="h-8 w-8" />
+                        <p className="text-sm">No assignments found</p>
+                        <p className="text-xs">Try adjusting your filters or search query</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
+
+      {/* ─── Assignment Details Dialog ──────────────────────────────── */}
+      {detailsAssignment && (
+        <Dialog open={!!detailsAssignment} onOpenChange={closeDetails}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                {detailsAssignment.title}
+              </DialogTitle>
+              <DialogDescription>
+                View detailed information about this assignment.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant={
+                    detailsAssignment.status === "published"
+                      ? "default"
+                      : detailsAssignment.status === "closed"
+                        ? "secondary"
+                        : "outline"
+                  }
+                >
+                  {detailsAssignment.status}
+                </Badge>
+                <Badge variant="secondary" className="font-mono">
+                  #{detailsAssignment.classId}
+                </Badge>
+                <span className="text-sm text-muted-foreground">{detailsAssignment.className}</span>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Description</Label>
+                <p className="text-sm">{detailsAssignment.description}</p>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Instructions</Label>
+                <p className="text-sm text-muted-foreground">{detailsAssignment.instructions}</p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <DetailItem
+                  icon={<Users className="h-4 w-4" />}
+                  label="Submissions"
+                  value={`${detailsAssignment.submissionCount || 0} submitted`}
+                />
+                <DetailItem
+                  icon={<FileText className="h-4 w-4" />}
+                  label="Graded"
+                  value={`${detailsAssignment.gradedCount || 0} graded`}
+                />
+                <DetailItem
+                  icon={<Clock className="h-4 w-4" />}
+                  label="Due Date"
+                  value={new Date(detailsAssignment.dueDate).toLocaleDateString()}
+                />
+                <DetailItem
+                  icon={<Calendar className="h-4 w-4" />}
+                  label="Max Points"
+                  value={detailsAssignment.maxPoints.toString()}
+                />
+                <DetailItem
+                  icon={<Users className="h-4 w-4" />}
+                  label="Teacher"
+                  value={detailsAssignment.teacherName}
+                />
+                {detailsAssignment.allowedFileTypes && detailsAssignment.allowedFileTypes.length > 0 && (
+                  <DetailItem
+                    icon={<FileText className="h-4 w-4" />}
+                    label="File Types"
+                    value={detailsAssignment.allowedFileTypes.join(", ")}
+                  />
+                )}
+              </div>
+
+              <div className="rounded-lg border p-3 text-xs text-muted-foreground">
+                <p>Created: {new Date(detailsAssignment.createdAt).toLocaleDateString()}</p>
+                <p>Last Updated: {new Date(detailsAssignment.updatedAt).toLocaleDateString()}</p>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline">Close</Button>
+              </DialogClose>
+              {detailsAssignment.status === "draft" && (
+                <Button onClick={() => { closeDetails(); handlePublish(detailsAssignment.id); }}>
+                  <Send className="mr-2 h-4 w-4" />
+                  Publish
+                </Button>
+              )}
+              {detailsAssignment.status === "published" && (
+                <Button variant="outline" onClick={() => { closeDetails(); handleClose(detailsAssignment.id); }}>
+                  <Archive className="mr-2 h-4 w-4" />
+                  Close
+                </Button>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* ─── Delete Confirmation Dialog ─────────────────────────────── */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Delete Assignment
+            </DialogTitle>
+            <DialogDescription>
+              Review the impact and confirm deletion.
+            </DialogDescription>
+          </DialogHeader>
+
+          <Tabs defaultValue="confirm">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="confirm">Confirm</TabsTrigger>
+              <TabsTrigger value="impact">Impact</TabsTrigger>
+              <TabsTrigger value="options">Options</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="confirm" className="space-y-4 pt-4">
+              <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-4">
+                <p className="text-sm font-medium text-destructive">
+                  You are about to delete:
+                </p>
+                <p className="mt-2 font-semibold">
+                  {assignments.find((a) => a.id === deleteAssignmentId)?.title || "Unknown Assignment"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {assignments.find((a) => a.id === deleteAssignmentId)?.className || ""}
+                </p>
+              </div>
+
+              <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-3">
+                <span className="mt-0.5">⚠️</span>
+                <div>
+                  <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                    This action cannot be undone
+                  </p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400/80">
+                    All submissions and grades will be permanently removed.
+                  </p>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="impact" className="space-y-4 pt-4">
+              <div className="space-y-3">
+                <p className="text-sm font-medium">This deletion will affect:</p>
+
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <DetailItem
+                    icon={<Users className="h-4 w-4" />}
+                    label="Submissions"
+                    value={`${assignments.find((a) => a.id === deleteAssignmentId)?.submissionCount || 0} submitted`}
+                  />
+                  <DetailItem
+                    icon={<FileText className="h-4 w-4" />}
+                    label="Graded"
+                    value={`${assignments.find((a) => a.id === deleteAssignmentId)?.gradedCount || 0} graded`}
+                  />
+                </div>
+
+                <div className="rounded-lg border p-3">
+                  <p className="text-sm font-medium">Teacher</p>
+                  <p className="text-sm text-muted-foreground">
+                    {assignments.find((a) => a.id === deleteAssignmentId)?.teacherName || "Unknown"}
+                  </p>
+                </div>
+
+                <div className="flex items-start gap-2 rounded-lg bg-red-500/10 p-3">
+                  <span className="mt-0.5">🗑️</span>
+                  <div>
+                    <p className="text-sm font-medium text-red-700 dark:text-red-400">
+                      Permanent deletion
+                    </p>
+                    <p className="text-xs text-red-600 dark:text-red-400/80">
+                      All submissions, grades, and feedback will be permanently removed.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="options" className="space-y-4 pt-4">
+              <div className="space-y-3">
+                <p className="text-sm font-medium">Deletion options:</p>
+
+                <div className="space-y-2">
+                  <label className="flex items-center gap-3 rounded-lg border p-3">
+                    <input type="checkbox" className="h-4 w-4" />
+                    <div>
+                      <p className="text-sm font-medium">Archive instead of delete</p>
+                      <p className="text-xs text-muted-foreground">
+                        Close the assignment and retain all data
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 rounded-lg border p-3">
+                    <input type="checkbox" className="h-4 w-4" />
+                    <div>
+                      <p className="text-sm font-medium">Notify affected students</p>
+                      <p className="text-xs text-muted-foreground">
+                        Send email notification to students who submitted
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 rounded-lg border p-3">
+                    <input type="checkbox" className="h-4 w-4" />
+                    <div>
+                      <p className="text-sm font-medium">Export data before deletion</p>
+                      <p className="text-xs text-muted-foreground">
+                        Download all submissions and grades as CSV
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Assignment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

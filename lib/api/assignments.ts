@@ -1,5 +1,6 @@
 import { Assignment, AssignmentFilters } from '@/lib/types/assignment';
 
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== 'false';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 
 const mockAssignments: Assignment[] = [
@@ -133,6 +134,18 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 export const assignmentsAPI = {
   // List all assignments (with optional filters)
   getAll: async (filters?: AssignmentFilters): Promise<Assignment[]> => {
+    if (USE_MOCK) {
+      let result = [...mockAssignments];
+      if (filters?.status && filters.status !== 'all') result = result.filter((a) => a.status === filters.status);
+      if (filters?.search) {
+        const q = filters.search.toLowerCase();
+        result = result.filter(
+          (a) => a.title.toLowerCase().includes(q) || a.description.toLowerCase().includes(q) || a.className.toLowerCase().includes(q)
+        );
+      }
+      if (filters?.classId) result = result.filter((a) => a.classId === filters.classId);
+      return result;
+    }
     try {
       const params = new URLSearchParams();
       if (filters?.status && filters.status !== 'all') params.append('status', filters.status);
@@ -140,7 +153,7 @@ export const assignmentsAPI = {
       if (filters?.classId) params.append('classId', filters.classId.toString());
 
       const queryString = params.toString();
-      return request<Assignment[]>(`/assignments${queryString ? `?${queryString}` : ''}`);
+      return await request<Assignment[]>(`/assignments${queryString ? `?${queryString}` : ''}`);
     } catch {
       console.warn('[assignmentsAPI] Backend unavailable, falling back to mock data.');
       let result = [...mockAssignments];
@@ -158,9 +171,15 @@ export const assignmentsAPI = {
 
   // Get single assignment by ID
   getById: async (id: number): Promise<Assignment> => {
+    if (USE_MOCK) {
+      const mock = mockAssignments.find((a) => a.id === id);
+      if (!mock) throw new Error('Assignment not found');
+      return mock;
+    }
     try {
-      return request<Assignment>(`/assignments/${id}`);
+      return await request<Assignment>(`/assignments/${id}`);
     } catch {
+      console.warn('[assignmentsAPI] Backend unavailable, falling back to mock data.');
       const mock = mockAssignments.find((a) => a.id === id);
       if (!mock) throw new Error('Assignment not found');
       return mock;
@@ -169,12 +188,37 @@ export const assignmentsAPI = {
 
   // Create new assignment
   create: async (data: Partial<Assignment>): Promise<Assignment> => {
+    if (USE_MOCK) {
+      const newAssignment: Assignment = {
+        id: Date.now(),
+        title: data.title || 'Untitled',
+        description: data.description || '',
+        instructions: data.instructions || '',
+        classId: data.classId || 0,
+        className: data.className || 'Unknown',
+        teacherId: data.teacherId || 0,
+        teacherName: data.teacherName || 'Unknown',
+        dueDate: data.dueDate || new Date().toISOString(),
+        maxPoints: data.maxPoints || 100,
+        status: data.status || 'draft',
+        allowedFileTypes: data.allowedFileTypes || ['.pdf'],
+        maxFileSize: data.maxFileSize || 10 * 1024 * 1024,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        submissionCount: 0,
+        gradedCount: 0,
+        pendingCount: 0,
+      };
+      mockAssignments.push(newAssignment);
+      return newAssignment;
+    }
     try {
-      return request<Assignment>('/assignments', {
+      return await request<Assignment>('/assignments', {
         method: 'POST',
         body: JSON.stringify(data),
       });
     } catch {
+      console.warn('[assignmentsAPI] Backend unavailable, falling back to mock data.');
       const newAssignment: Assignment = {
         id: Date.now(),
         title: data.title || 'Untitled',
@@ -202,12 +246,19 @@ export const assignmentsAPI = {
 
   // Update assignment
   update: async (id: number, data: Partial<Assignment>): Promise<Assignment> => {
+    if (USE_MOCK) {
+      const idx = mockAssignments.findIndex((a) => a.id === id);
+      if (idx === -1) throw new Error('Assignment not found');
+      mockAssignments[idx] = { ...mockAssignments[idx], ...data, updatedAt: new Date().toISOString() };
+      return mockAssignments[idx];
+    }
     try {
-      return request<Assignment>(`/assignments/${id}`, {
+      return await request<Assignment>(`/assignments/${id}`, {
         method: 'PUT',
         body: JSON.stringify(data),
       });
     } catch {
+      console.warn('[assignmentsAPI] Backend unavailable, falling back to mock data.');
       const idx = mockAssignments.findIndex((a) => a.id === id);
       if (idx === -1) throw new Error('Assignment not found');
       mockAssignments[idx] = { ...mockAssignments[idx], ...data, updatedAt: new Date().toISOString() };
@@ -217,9 +268,15 @@ export const assignmentsAPI = {
 
   // Delete assignment
   delete: async (id: number): Promise<void> => {
+    if (USE_MOCK) {
+      const idx = mockAssignments.findIndex((a) => a.id === id);
+      if (idx !== -1) mockAssignments.splice(idx, 1);
+      return;
+    }
     try {
-      return request<void>(`/assignments/${id}`, { method: 'DELETE' });
+      await request<void>(`/assignments/${id}`, { method: 'DELETE' });
     } catch {
+      console.warn('[assignmentsAPI] Backend unavailable, falling back to mock data.');
       const idx = mockAssignments.findIndex((a) => a.id === id);
       if (idx !== -1) mockAssignments.splice(idx, 1);
     }
@@ -227,9 +284,16 @@ export const assignmentsAPI = {
 
   // Publish assignment
   publish: async (id: number): Promise<Assignment> => {
+    if (USE_MOCK) {
+      const a = mockAssignments.find((a) => a.id === id);
+      if (!a) throw new Error('Assignment not found');
+      a.status = 'published';
+      return a;
+    }
     try {
-      return request<Assignment>(`/assignments/${id}/publish`, { method: 'POST' });
+      return await request<Assignment>(`/assignments/${id}/publish`, { method: 'POST' });
     } catch {
+      console.warn('[assignmentsAPI] Backend unavailable, falling back to mock data.');
       const a = mockAssignments.find((a) => a.id === id);
       if (!a) throw new Error('Assignment not found');
       a.status = 'published';
@@ -239,9 +303,16 @@ export const assignmentsAPI = {
 
   // Close assignment
   close: async (id: number): Promise<Assignment> => {
+    if (USE_MOCK) {
+      const a = mockAssignments.find((a) => a.id === id);
+      if (!a) throw new Error('Assignment not found');
+      a.status = 'closed';
+      return a;
+    }
     try {
-      return request<Assignment>(`/assignments/${id}/close`, { method: 'POST' });
+      return await request<Assignment>(`/assignments/${id}/close`, { method: 'POST' });
     } catch {
+      console.warn('[assignmentsAPI] Backend unavailable, falling back to mock data.');
       const a = mockAssignments.find((a) => a.id === id);
       if (!a) throw new Error('Assignment not found');
       a.status = 'closed';

@@ -15,7 +15,7 @@ export default function DashboardLayout({
   const { user } = useAuth();
   const currentRole = user?.role ??  "student";
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={true}>
       <div className="min-h-screen bg-muted/30">
         <div className="flex min-h-screen">
           <AppSidebar role={currentRole} />

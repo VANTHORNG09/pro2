@@ -116,14 +116,22 @@ export default function CreateAssignmentPage() {
       return
     }
 
-    const dueDateTime = new Date(`${formData.dueDate}T${formData.dueTime}`)
+    // If saving as draft and no due date, use a far future date
+    const dueDateTime = formData.dueDate
+      ? new Date(`${formData.dueDate}T${formData.dueTime || '23:59'}`)
+      : new Date('2099-12-31T23:59:59Z')
+
+    if (isNaN(dueDateTime.getTime())) {
+      setErrors((prev) => ({ ...prev, dueDate: 'Invalid date format' }))
+      return
+    }
 
     const assignmentData = {
       title: formData.title,
       description: formData.description,
       instructions: formData.instructions,
       classId: parseInt(formData.classId),
-      className: classes.find(c => c.id === parseInt(formData.classId))?.name || '',
+      className: classes.find((c) => c.id === parseInt(formData.classId))?.name || '',
       dueDate: dueDateTime.toISOString(),
       maxPoints: formData.maxPoints,
       allowedFileTypes: formData.allowedFileTypes,

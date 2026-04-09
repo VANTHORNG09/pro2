@@ -1,34 +1,206 @@
 "use client";
 
-import React, { useState } from "react";
-import { useParams } from "next/navigation";
-import { ArrowLeft, Download, Search, Filter, Users, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import {
+  ArrowLeft,
+  Download,
+  Search,
+  Users,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  ArrowUpRight,
+  ArrowDownRight,
+  FileText,
+} from "lucide-react";
 import Link from "next/link";
-import { PageHeader } from "@/components/shared/page-header";
-import { PageShell } from "@/components/shared/page-shell";
-import { GradingInterface } from "@/components/assignments/GradingInterface";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
+
 import { useAssignment } from "@/lib/hooks/queries/useAssignments";
 import { useSubmissions, useDownloadSubmissions } from "@/lib/hooks/queries/useSubmissions";
-import { SubmissionFilters } from "@/lib/types/assignment";
-import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { GradingInterface } from "@/components/assignments/GradingInterface";
+import type { SubmissionFilters, SubmissionStatus } from "@/lib/types/assignment";
 
+// ─── Stat Card Component ──────────────────────────────────────────────
+function DashboardStat({
+  title,
+  value,
+  subtitle,
+  icon,
+  trend,
+}: {
+  title: string;
+  value: number | string;
+  subtitle: string;
+  icon: React.ReactNode;
+  trend?: { value: string; positive: boolean };
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <div className="text-muted-foreground">{icon}</div>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          {trend &&
+            (trend.positive ? (
+              <ArrowUpRight className="h-3 w-3 text-emerald-500" />
+            ) : (
+              <ArrowDownRight className="h-3 w-3 text-red-500" />
+            ))}
+          {trend && (
+            <span className={trend.positive ? "text-emerald-500" : "text-red-500"}>
+              {trend.value}
+            </span>
+          )}
+          <span>{subtitle}</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Helper Functions ─────────────────────────────────────────────────
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+// ─── Submission Card Component ────────────────────────────────────────
+function SubmissionCard({
+  submission,
+  selected,
+  onSelect,
+}: {
+  submission: any;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`w-full text-left p-4 rounded-lg border transition-all hover:shadow-md ${
+        selected
+          ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+          : "bg-card hover:bg-muted/50"
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <Avatar className="h-8 w-8 shrink-0">
+          <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+            {getInitials(submission.studentName)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-medium truncate">{submission.studentName}</p>
+            {submission.grade !== null && submission.grade !== undefined && (
+              <span className="text-sm font-bold shrink-0">
+                {submission.grade}/{submission.maxPoints}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground truncate">{submission.studentEmail}</p>
+          <div className="flex items-center gap-2 mt-2">
+            {submission.submittedAt && (
+              <span className="text-xs text-muted-foreground">
+                Submitted: {formatDate(submission.submittedAt)}
+              </span>
+            )}
+            <div className="flex items-center gap-1">
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  submission.status === "graded"
+                    ? "bg-emerald-500"
+                    : submission.status === "submitted"
+                      ? "bg-blue-500"
+                      : submission.status === "late" || submission.isLate
+                        ? "bg-red-500"
+                        : submission.status === "returned"
+                          ? "bg-violet-500"
+                          : "bg-muted"
+                }`}
+              />
+              <span className="text-xs capitalize">{submission.status}</span>
+              {submission.isLate && submission.status !== "late" && (
+                <Badge variant="outline" className="text-[10px] border-red-500/30 text-red-500 h-4 px-1">
+                  Late
+                </Badge>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────
 export default function TeacherSubmissionsPage() {
   const params = useParams();
+  const router = useRouter();
+  const { toast } = useToast();
+
   const assignmentId = parseInt(params.id as string);
 
-  const [filters, setFilters] = useState<SubmissionFilters>({ status: "all" });
   const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState("all");
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<number | null>(null);
 
   const { data: assignment, isLoading: isLoadingAssignment } = useAssignment(assignmentId);
-  const { data: submissions, isLoading: isLoadingSubmissions } = useSubmissions(assignmentId, {
-    ...filters,
+  const { data: submissions = [], isLoading: isLoadingSubmissions } = useSubmissions(assignmentId, {
+    status: activeTab === "all" ? undefined : (activeTab as SubmissionStatus),
     search: search || undefined,
   });
   const downloadMutation = useDownloadSubmissions();
 
-  const selectedSubmission = submissions?.find((s) => s.id === selectedSubmissionId);
+  const selectedSubmission = submissions.find((s) => s.id === selectedSubmissionId);
+
+  // Counts
+  const counts = {
+    all: submissions.length,
+    submitted: submissions.filter((s) => s.status === "submitted").length,
+    graded: submissions.filter((s) => s.status === "graded" || s.status === "returned").length,
+    pending: submissions.filter((s) => s.status === "pending").length,
+    late: submissions.filter((s) => s.isLate).length,
+  };
+
+  const totalSubmissions = submissions.length;
+  const totalGraded = counts.graded;
+  const totalPending = counts.pending + counts.submitted;
+  const totalLate = counts.late;
+  const gradingPct = totalSubmissions > 0 ? Math.round((totalGraded / totalSubmissions) * 100) : 0;
 
   const handleDownloadAll = async () => {
     try {
@@ -36,255 +208,195 @@ export default function TeacherSubmissionsPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `assignments-${assignmentId}.zip`;
+      a.download = `${assignment?.title || "assignments"}-${assignmentId}.zip`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-    } catch (error) {
-      console.error("Failed to download submissions:", error);
-      alert("Failed to download submissions");
+      toast({ title: "Download started", description: "Downloading all submissions as ZIP." });
+    } catch {
+      toast({ title: "Download failed", description: "Could not download submissions.", variant: "destructive" });
     }
   };
 
-  const handleStatusFilter = (status: string) => {
-    setFilters((prev) => ({ ...prev, status: status === "all" ? "all" : status as SubmissionFilters['status'] }));
-  };
-
-  const submittedCount = submissions?.filter((s) => s.status !== "pending").length || 0;
-  const gradedCount = submissions?.filter((s) => s.status === "graded" || s.status === "returned").length || 0;
-  const pendingCount = submissions?.filter((s) => s.status === "pending").length || 0;
-
   if (isLoadingAssignment || isLoadingSubmissions) {
     return (
-      <PageShell>
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/teacher/assignments">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Assignments
+            </Link>
+          </Button>
         </div>
-      </PageShell>
+        <div className="flex items-center justify-center py-12">
+          <div className="flex flex-col items-center gap-2 text-muted-foreground">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            <span className="text-sm">Loading submissions...</span>
+          </div>
+        </div>
+      </div>
     );
   }
 
   if (!assignment) {
     return (
-      <PageShell>
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">Assignment not found</p>
-          <Button className="mt-4" onClick={() => history.back()}>
-            Go Back
-          </Button>
+      <div className="flex flex-col gap-6">
+        <Button variant="ghost" size="sm" asChild>
+          <Link href="/teacher/assignments">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Assignments
+          </Link>
+        </Button>
+        <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground">
+          <FileText className="h-12 w-12" />
+          <h3 className="text-lg font-semibold">Assignment not found</h3>
+          <p className="text-sm">The requested assignment could not be found.</p>
         </div>
-      </PageShell>
+      </div>
     );
   }
 
   return (
-    <PageShell>
-      {/* Back Button */}
-      <Link href="/teacher/assignments">
-        <Button variant="ghost" size="sm" className="mb-4">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Assignments
-        </Button>
-      </Link>
-
-      <PageHeader
-        title={`${assignment.title} - Submissions`}
-        description={`Manage and grade student submissions`}
-      />
-
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4 mb-6">
-        <div className="p-4 rounded-lg border bg-card/50">
-          <div className="flex items-center gap-2 mb-2">
-            <Users className="h-5 w-5 text-primary" />
-            <h3 className="text-sm font-medium">Total Submissions</h3>
+    <div className="flex flex-col gap-6">
+      {/* Page Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex items-center gap-4 mb-2">
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/teacher/assignments">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Assignments
+              </Link>
+            </Button>
           </div>
-          <p className="text-2xl font-bold">{submittedCount}</p>
-        </div>
-
-        <div className="p-4 rounded-lg border bg-card/50">
-          <div className="flex items-center gap-2 mb-2">
-            <CheckCircle className="h-5 w-5 text-green-600" />
-            <h3 className="text-sm font-medium">Graded</h3>
-          </div>
-          <p className="text-2xl font-bold text-green-600">{gradedCount}</p>
-        </div>
-
-        <div className="p-4 rounded-lg border bg-card/50">
-          <div className="flex items-center gap-2 mb-2">
-            <Clock className="h-5 w-5 text-amber-600" />
-            <h3 className="text-sm font-medium">Pending</h3>
-          </div>
-          <p className="text-2xl font-bold text-amber-600">{pendingCount}</p>
-        </div>
-
-        <div className="p-4 rounded-lg border bg-card/50">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertCircle className="h-5 w-5 text-red-600" />
-            <h3 className="text-sm font-medium">Late</h3>
-          </div>
-          <p className="text-2xl font-bold text-red-600">
-            {submissions?.filter((s) => s.isLate).length || 0}
+          <h1 className="text-2xl font-bold tracking-tight">{assignment.title}</h1>
+          <p className="text-sm text-muted-foreground">
+            Manage and grade student submissions • {assignment.className}
           </p>
         </div>
-      </div>
-
-      {/* Actions Bar */}
-      <div className="flex items-center justify-between gap-4 mb-6">
-        {/* Search */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search students..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
-
-        {/* Download All */}
-        <Button
-          variant="outline"
-          onClick={handleDownloadAll}
-          disabled={downloadMutation.isPending}
-        >
-          {downloadMutation.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <>
-              <Download className="h-4 w-4 mr-2" />
-              Download All
-            </>
-          )}
+        <Button variant="outline" onClick={handleDownloadAll} disabled={downloadMutation.isPending || submissions.length === 0}>
+          <Download className="mr-2 h-4 w-4" />
+          {downloadMutation.isPending ? "Downloading..." : "Download All"}
         </Button>
       </div>
 
-      {/* Status Filters */}
-      <div className="flex items-center gap-2 mb-6">
-        <Filter className="h-4 w-4 text-muted-foreground" />
-        <Button
-          size="sm"
-          variant={filters.status === "all" ? "default" : "outline"}
-          onClick={() => handleStatusFilter("all")}
-        >
-          All ({submittedCount})
-        </Button>
-        <Button
-          size="sm"
-          variant={filters.status === "submitted" ? "default" : "outline"}
-          onClick={() => handleStatusFilter("submitted")}
-        >
-          Submitted ({submittedCount - gradedCount})
-        </Button>
-        <Button
-          size="sm"
-          variant={filters.status === "graded" ? "default" : "outline"}
-          onClick={() => handleStatusFilter("graded")}
-        >
-          Graded ({gradedCount})
-        </Button>
+      {/* Stats Grid */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <DashboardStat
+          title="Total Submissions"
+          value={totalSubmissions}
+          subtitle={`${counts.submitted} submitted`}
+          icon={<Users className="h-4 w-4" />}
+        />
+        <DashboardStat
+          title="Graded"
+          value={totalGraded}
+          subtitle="completed reviews"
+          icon={<CheckCircle className="h-4 w-4" />}
+          trend={
+            totalSubmissions > 0
+              ? { value: `${gradingPct}% graded`, positive: true }
+              : undefined
+          }
+        />
+        <DashboardStat
+          title="Pending"
+          value={totalPending}
+          subtitle="awaiting grading"
+          icon={<Clock className="h-4 w-4" />}
+        />
+        <DashboardStat
+          title="Late"
+          value={totalLate}
+          subtitle="past due date"
+          icon={<AlertCircle className="h-4 w-4" />}
+          trend={totalLate > 0 ? { value: `${totalLate} late`, positive: false } : undefined}
+        />
       </div>
 
-      {/* Main Content */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Submissions List */}
-        <div className="space-y-3">
-          <h3 className="font-semibold">Student Submissions</h3>
-          {submissions && submissions.length > 0 ? (
-            <div className="space-y-2">
-              {submissions.map((submission) => (
-                <button
-                  key={submission.id}
-                  onClick={() => setSelectedSubmissionId(submission.id)}
-                  className={`w-full text-left p-4 rounded-lg border transition-all hover:shadow-md ${
-                    selectedSubmissionId === submission.id
-                      ? "border-primary bg-primary/5"
-                      : "bg-card/50 hover:bg-card/80"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium">{submission.studentName}</p>
-                      <p className="text-xs text-muted-foreground">{submission.studentEmail}</p>
-                      {submission.submittedAt && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Submitted: {new Date(submission.submittedAt).toLocaleDateString()}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      {submission.grade !== null && (
-                        <span className="text-sm font-bold">
-                          {submission.grade}/{submission.maxPoints}
-                        </span>
-                      )}
-                      <StatusBadge status={submission.status} isLate={submission.isLate} />
-                    </div>
-                  </div>
-                </button>
-              ))}
+      {/* Main Content Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle>Submissions</CardTitle>
+              <CardDescription>{submissions.length} submission(s) found</CardDescription>
             </div>
-          ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <p>No submissions found</p>
-            </div>
-          )}
-        </div>
-
-        {/* Grading Panel */}
-        <div>
-          <h3 className="font-semibold mb-3">Grading</h3>
-          {selectedSubmission ? (
-            <div className="p-4 rounded-lg border bg-card/50">
-              <GradingInterface
-                submission={selectedSubmission}
-                onUpdate={() => {
-                  // React Query will automatically refetch
-                }}
+            <div className="relative flex-1 max-w-sm">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search students..."
+                className="pl-9"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-          ) : (
-            <div className="p-8 rounded-lg border bg-card/30 text-center">
-              <p className="text-muted-foreground">
-                Select a submission to start grading
-              </p>
+          </div>
+        </CardHeader>
+        <Separator />
+        <CardContent className="p-0">
+          {/* Status Tabs */}
+          <div className="px-6 pt-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList>
+                <TabsTrigger value="all">All ({counts.all})</TabsTrigger>
+                <TabsTrigger value="submitted">Submitted ({counts.submitted})</TabsTrigger>
+                <TabsTrigger value="graded">Graded ({counts.graded})</TabsTrigger>
+                <TabsTrigger value="pending">Pending ({counts.pending})</TabsTrigger>
+                <TabsTrigger value="late">Late ({counts.late})</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
+          {/* Two Column Layout */}
+          <div className="grid lg:grid-cols-2 gap-0">
+            {/* Submissions List */}
+            <div className="border-r p-6">
+              <h3 className="font-semibold mb-4">Student Submissions</h3>
+              {submissions.length > 0 ? (
+                <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
+                  {submissions.map((submission) => (
+                    <SubmissionCard
+                      key={submission.id}
+                      submission={submission}
+                      selected={selectedSubmissionId === submission.id}
+                      onSelect={() => setSelectedSubmissionId(submission.id)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground">
+                  <Users className="h-8 w-8" />
+                  <p className="text-sm">No submissions found</p>
+                  <p className="text-xs">Try adjusting your filters or search query</p>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </div>
-    </PageShell>
-  );
-}
 
-function StatusBadge({ status, isLate }: { status: string; isLate: boolean }) {
-  const baseClasses = "px-2 py-1 rounded-full text-xs font-medium";
-
-  const getStatusBadge = () => {
-    switch (status) {
-      case "submitted":
-        return <span className={cn(baseClasses, "bg-blue-500/20 text-blue-700")}>Submitted</span>;
-      case "graded":
-        return <span className={cn(baseClasses, "bg-green-500/20 text-green-700")}>Graded</span>;
-      case "returned":
-        return <span className={cn(baseClasses, "bg-purple-500/20 text-purple-700")}>Returned</span>;
-      case "late":
-        return <span className={cn(baseClasses, "bg-amber-500/20 text-amber-700")}>Late</span>;
-      default:
-        return <span className={cn(baseClasses, "bg-gray-500/20 text-gray-700")}>{status}</span>;
-    }
-  };
-
-  return (
-    <div className="flex items-center gap-1">
-      {isLate && <AlertCircle className="h-3 w-3 text-red-600" />}
-      {getStatusBadge()}
+            {/* Grading Panel */}
+            <div className="p-6">
+              <h3 className="font-semibold mb-4">Grading</h3>
+              {selectedSubmission ? (
+                <div className="max-h-[600px] overflow-y-auto pr-2">
+                  <GradingInterface
+                    submission={selectedSubmission}
+                    onUpdate={() => {
+                      setSelectedSubmissionId(null);
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground border rounded-lg">
+                  <FileText className="h-8 w-8" />
+                  <p className="text-sm">Select a submission to start grading</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
-}
-
-// Simple cn utility if not imported
-function cn(...classes: (string | boolean | undefined)[]) {
-  return classes.filter(Boolean).join(" ");
 }

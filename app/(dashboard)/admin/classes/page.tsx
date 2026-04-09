@@ -1,12 +1,11 @@
-// app/(dashboard)/admin/classes/page.tsx
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Plus,
   Trash2,
   Edit2,
-  X,
   Search,
   Users,
   BookOpen,
@@ -14,19 +13,26 @@ import {
   ArchiveRestore,
   Eye,
   Download,
-  CheckSquare,
-  Square,
   Calendar,
   MapPin,
   Clock,
   GraduationCap,
   FileText,
+  ArrowUpRight,
+  ArrowDownRight,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,16 +46,31 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import { PageShell } from "@/components/shared/page-shell";
-import { PageHeader } from "@/components/shared/page-header";
-import { SectionCard } from "@/components/shared/section-card";
-import { StatusBadge } from "@/components/shared/status-badge";
-import { StatCard } from "@/components/shared/stat-card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 
 import {
   useClasses,
@@ -95,7 +116,296 @@ function exportClassesToCSV(classes: Class[]) {
   link.click();
 }
 
+// ─── Stat Card Component ──────────────────────────────────────────────
+function DashboardStat({
+  title,
+  value,
+  subtitle,
+  icon,
+  trend,
+}: {
+  title: string;
+  value: number | string;
+  subtitle: string;
+  icon: React.ReactNode;
+  trend?: { value: string; positive: boolean };
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <div className="text-muted-foreground">{icon}</div>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          {trend &&
+            (trend.positive ? (
+              <ArrowUpRight className="h-3 w-3 text-emerald-500" />
+            ) : (
+              <ArrowDownRight className="h-3 w-3 text-red-500" />
+            ))}
+          {trend && (
+            <span className={trend.positive ? "text-emerald-500" : "text-red-500"}>
+              {trend.value}
+            </span>
+          )}
+          <span>{subtitle}</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Detail Item Sub-Component ────────────────────────────────────────
+function DetailItem({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-2 rounded-lg border p-3">
+      <div className="text-muted-foreground">{icon}</div>
+      <div>
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-sm font-medium">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Teacher Selector Sub-Component ───────────────────────────────────
+function TeacherSelector({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+}) {
+  const { data: users = [], isLoading } = useUsers({ role: "teacher" });
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="cls-teacher">Assign Teacher</Label>
+      <Select value={value || "none"} onValueChange={(v) => onChange(v === "none" ? "" : v)}>
+        <SelectTrigger id="cls-teacher">
+          <SelectValue placeholder="Select a teacher..." />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">Select a teacher...</SelectItem>
+          {isLoading ? (
+            <SelectItem value="loading" disabled>
+              Loading teachers...
+            </SelectItem>
+          ) : (
+            users.map((u) => (
+              <SelectItem key={u.id} value={u.id}>
+                {u.fullName} ({u.email})
+              </SelectItem>
+            ))
+          )}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+// ─── Manage Students Modal ────────────────────────────────────────────
+function ManageStudentsModal({
+  classItem,
+  onClose,
+}: {
+  classItem: Class;
+  onClose: () => void;
+}) {
+  const { data: students = [], isLoading } = useClassStudents(classItem.id);
+  const enrollStudent = useEnrollStudent();
+  const removeStudent = useRemoveStudent();
+  const { data: allUsers = [] } = useUsers({ role: "student" });
+  const { toast } = useToast();
+
+  const [studentEmail, setStudentEmail] = useState("");
+  const [searchStudent, setSearchStudent] = useState("");
+  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
+  const [removeStudentId, setRemoveStudentId] = useState<number | null>(null);
+
+  const handleEnroll = () => {
+    const student = allUsers.find((u) => u.email === studentEmail.trim());
+    if (!student) {
+      toast({
+        title: "Student not found",
+        description: "No student matches that email.",
+        variant: "destructive",
+      });
+      return;
+    }
+    enrollStudent.mutate(
+      { classId: classItem.id, studentId: parseInt(student.id) },
+      {
+        onSuccess: () => {
+          setStudentEmail("");
+          toast({ title: "Student enrolled", description: "The student has been added to the class." });
+        },
+      }
+    );
+  };
+
+  const handleRemove = (studentId: number) => {
+    setRemoveStudentId(studentId);
+    setRemoveConfirmOpen(true);
+  };
+
+  const confirmRemoveStudent = () => {
+    if (removeStudentId) {
+      removeStudent.mutate(
+        { classId: classItem.id, studentId: removeStudentId },
+        {
+          onSuccess: () =>
+            toast({ title: "Student removed", description: "The student has been removed from the class." }),
+        }
+      );
+      setRemoveConfirmOpen(false);
+      setRemoveStudentId(null);
+    }
+  };
+
+  const filteredStudents = students.filter((s) => {
+    if (!searchStudent) return true;
+    const q = searchStudent.toLowerCase();
+    return s.studentName.toLowerCase().includes(q) || s.studentEmail.toLowerCase().includes(q);
+  });
+
+  return (
+    <>
+      <Dialog open={!!classItem} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Manage Students
+            </DialogTitle>
+            <DialogDescription>
+              {classItem.name} ({classItem.code})
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Enroll Student */}
+          <div className="space-y-3">
+            <Label>Enroll Student</Label>
+            <div className="flex gap-2">
+              <Select value={studentEmail} onValueChange={setStudentEmail}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Select a student..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {allUsers
+                    .filter((u) => !students.some((s) => s.studentEmail === u.email))
+                    .map((u) => (
+                      <SelectItem key={u.id} value={u.email}>
+                        {u.fullName} ({u.email})
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <Button onClick={handleEnroll} disabled={!studentEmail || enrollStudent.isPending}>
+                {enrollStudent.isPending ? "Enrolling..." : "Enroll"}
+              </Button>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Student List */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label>Enrolled Students ({filteredStudents.length})</Label>
+              <Input
+                placeholder="Search..."
+                className="w-48"
+                value={searchStudent}
+                onChange={(e) => setSearchStudent(e.target.value)}
+              />
+            </div>
+
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8 text-muted-foreground">
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                Loading students...
+              </div>
+            ) : filteredStudents.length > 0 ? (
+              <div className="space-y-2">
+                {filteredStudents.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between rounded-lg border p-3">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+                          {s.studentName.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-medium">{s.studentName}</p>
+                        <p className="text-xs text-muted-foreground">{s.studentEmail}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={s.status === "active" ? "default" : "secondary"}>
+                        {s.status}
+                      </Badge>
+                      {s.grade != null && <span className="text-xs font-medium">Grade: {s.grade}</span>}
+                      {s.submissionCount != null && (
+                        <span className="text-xs text-muted-foreground">{s.submissionCount} submissions</span>
+                      )}
+                      <Button size="icon-sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleRemove(s.studentId)} title="Remove student">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-2 py-8 text-muted-foreground">
+                <Users className="h-8 w-8" />
+                <p className="text-sm">No students enrolled yet</p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Close</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Student Confirmation */}
+      <AlertDialog open={removeConfirmOpen} onOpenChange={setRemoveConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove student?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will unenroll the student from this class. Their submissions and grades will be retained in the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRemoveStudent} className="bg-destructive text-destructive-foreground">
+              Remove Student
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────
 export default function AdminClassesPage() {
+  const router = useRouter();
   const { data: classes = [], isLoading } = useClasses({});
   const createClass = useCreateClass();
   const deleteClass = useDeleteClass();
@@ -110,6 +420,7 @@ export default function AdminClassesPage() {
   // Filters
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ClassStatus | "all">("all");
+  const [activeTab, setActiveTab] = useState("all");
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -292,13 +603,9 @@ export default function AdminClassesPage() {
     if (!bulkAction || selectedClassIds.size === 0) return;
 
     selectedClassIds.forEach((id) => {
-      if (bulkAction === "delete") {
-        deleteClass.mutate(id);
-      } else if (bulkAction === "archive") {
-        archiveClass.mutate(id);
-      } else if (bulkAction === "unarchive") {
-        unarchiveClass.mutate(id);
-      }
+      if (bulkAction === "delete") deleteClass.mutate(id);
+      else if (bulkAction === "archive") archiveClass.mutate(id);
+      else if (bulkAction === "unarchive") unarchiveClass.mutate(id);
     });
 
     toast({
@@ -315,14 +622,11 @@ export default function AdminClassesPage() {
 
   // ─── Filtering ──────────────────────────────────────────────────────
   const filteredClasses = classes.filter((c) => {
+    if (activeTab !== "all" && c.status !== activeTab) return false;
     if (statusFilter !== "all" && c.status !== statusFilter) return false;
     if (search) {
       const q = search.toLowerCase();
-      return (
-        c.name.toLowerCase().includes(q) ||
-        c.code.toLowerCase().includes(q) ||
-        c.teacherName.toLowerCase().includes(q)
-      );
+      return c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q) || c.teacherName.toLowerCase().includes(q);
     }
     return true;
   });
@@ -334,39 +638,61 @@ export default function AdminClassesPage() {
   const archivedClasses = classes.filter((c) => c.status === "archived").length;
 
   return (
-    <PageShell>
-      <PageHeader
-        title="Class Management"
-        description="Manage all classes: create, assign teachers, add/remove students, archive, and edit details."
-        action={
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => exportClassesToCSV(filteredClasses)} disabled={filteredClasses.length === 0}>
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
-            <Button onClick={openAddModal}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Class
-            </Button>
-          </div>
-        }
-      />
+    <div className="flex flex-col gap-6">
+      {/* Page Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Class Management</h1>
+          <p className="text-sm text-muted-foreground">
+            Manage all classes: create, assign teachers, add/remove students, archive, and edit details.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => exportClassesToCSV(filteredClasses)} disabled={filteredClasses.length === 0}>
+            <Download className="mr-2 h-4 w-4" />
+            Export
+          </Button>
+          <Button onClick={openAddModal}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Class
+          </Button>
+        </div>
+      </div>
 
-      {/* Stats */}
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Total Classes" value={classes.length} subtitle="All classes" icon={<BookOpen className="h-4 w-4" />} />
-        <StatCard title="Active Classes" value={activeClasses} subtitle="Currently active" />
-        <StatCard title="Total Students" value={totalStudents} subtitle="Across all classes" icon={<Users className="h-4 w-4" />} />
-        <StatCard title="Total Assignments" value={totalAssignments} subtitle="Created assignments" icon={<FileText className="h-4 w-4" />} />
+      {/* Stats Grid */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <DashboardStat
+          title="Total Classes"
+          value={classes.length}
+          subtitle={`${activeClasses} active, ${archivedClasses} archived`}
+          icon={<BookOpen className="h-4 w-4" />}
+          trend={archivedClasses > 0 ? { value: `${archivedClasses} archived`, positive: false } : undefined}
+        />
+        <DashboardStat
+          title="Active Classes"
+          value={activeClasses}
+          subtitle={`${classes.length - activeClasses} inactive`}
+          icon={<BookOpen className="h-4 w-4" />}
+        />
+        <DashboardStat
+          title="Total Students"
+          value={totalStudents}
+          subtitle="across all classes"
+          icon={<Users className="h-4 w-4" />}
+        />
+        <DashboardStat
+          title="Total Assignments"
+          value={totalAssignments}
+          subtitle="created assignments"
+          icon={<FileText className="h-4 w-4" />}
+        />
       </div>
 
       {/* Bulk Action Bar */}
       {selectedClassIds.size > 0 && (
-        <SectionCard title="">
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">
-              {selectedClassIds.size} class(es) selected
-            </span>
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="flex items-center gap-3 py-4">
+            <span className="text-sm font-medium">{selectedClassIds.size} class(es) selected</span>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={() => handleBulkAction("archive")}>
                 <Archive className="mr-1 h-3.5 w-3.5" />
@@ -384,156 +710,189 @@ export default function AdminClassesPage() {
             <Button size="sm" variant="ghost" onClick={clearSelection} className="ml-auto">
               Clear
             </Button>
-          </div>
-        </SectionCard>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Filters */}
-      <SectionCard title="Filters">
-        <div className="flex flex-wrap gap-3">
-          <div className="flex-1 min-w-[200px]">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search by class name, code, or teacher..."
-                className="pl-10"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+      {/* Main Content Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle>Classes</CardTitle>
+              <CardDescription>{filteredClasses.length} class(es) found</CardDescription>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input placeholder="Search classes..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+              </div>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ClassStatus | "all")}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <select
-            className="rounded-xl border border-border bg-background px-4 py-2 text-sm"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as ClassStatus | "all")}
-          >
-            <option value="all">All Statuses</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="archived">Archived</option>
-          </select>
-        </div>
-      </SectionCard>
+        </CardHeader>
+        <Separator />
+        <CardContent className="p-0">
+          {/* Status Tabs */}
+          <div className="px-6 pt-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList>
+                <TabsTrigger value="all">All</TabsTrigger>
+                <TabsTrigger value="active">Active</TabsTrigger>
+                <TabsTrigger value="inactive">Inactive</TabsTrigger>
+                <TabsTrigger value="archived">Archived</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
 
-      {/* Class Table */}
-      <SectionCard
-        title="Classes"
-        description={`${filteredClasses.length} class(es) found`}
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full table-auto border-collapse text-left">
-            <thead className="border-b border-border/60">
-              <tr>
-                <th className="px-4 py-3 w-10">
-                  <Checkbox
-                    checked={filteredClasses.length > 0 && selectedClassIds.size === filteredClasses.length}
-                    onCheckedChange={toggleSelectAll}
-                  />
-                </th>
-                <th className="px-4 py-3">Class</th>
-                <th className="px-4 py-3">Code</th>
-                <th className="px-4 py-3">Teacher</th>
-                <th className="px-4 py-3">Students</th>
-                <th className="px-4 py-3">Subject</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-sm text-muted-foreground">
-                    Loading classes...
-                  </td>
-                </tr>
-              ) : filteredClasses.length > 0 ? (
-                filteredClasses.map((c) => (
-                  <tr key={c.id} className="border-b border-border/20 hover:bg-muted/30">
-                    <td className="px-4 py-3">
-                      <Checkbox
-                        checked={selectedClassIds.has(c.id)}
-                        onCheckedChange={() => toggleSelectClass(c.id)}
-                      />
-                    </td>
-                    <td className="px-4 py-3 font-medium">{c.name}</td>
-                    <td className="px-4 py-3">
-                      <span className="rounded bg-muted px-2 py-0.5 text-xs font-mono">{c.code}</span>
-                    </td>
-                    <td className="px-4 py-3 text-sm">{c.teacherName}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1 text-sm">
-                        <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                        {c.studentCount}
+          {/* Table */}
+          <div className="mt-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10 pl-6">
+                    <Checkbox
+                      checked={filteredClasses.length > 0 && selectedClassIds.size === filteredClasses.length}
+                      onCheckedChange={toggleSelectAll}
+                    />
+                  </TableHead>
+                  <TableHead>Class</TableHead>
+                  <TableHead>Teacher</TableHead>
+                  <TableHead>Students</TableHead>
+                  <TableHead>Assignments</TableHead>
+                  <TableHead className="hidden md:table-cell">Schedule</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-[140px] text-right pr-6">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="h-32 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        <span className="text-sm">Loading classes...</span>
                       </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm">{c.subject}</td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={c.status} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1.5">
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          onClick={() => openClassDetails(c)}
-                          title="View details"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          onClick={() => openManageStudents(c)}
-                          title="Manage students"
-                        >
-                          <Users className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          onClick={() => openEditModal(c)}
-                          title="Edit class"
-                        >
-                          <Edit2 className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          onClick={() => handleToggleArchive(c)}
-                          title={c.status === "archived" ? "Unarchive" : "Archive"}
-                        >
-                          {c.status === "archived" ? (
-                            <ArchiveRestore className="h-3.5 w-3.5" />
-                          ) : (
-                            <Archive className="h-3.5 w-3.5" />
-                          )}
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="destructive"
-                          onClick={() => handleDeleteClass(c.id)}
-                          title="Delete class"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                    </TableCell>
+                  </TableRow>
+                ) : filteredClasses.length > 0 ? (
+                  filteredClasses.map((c) => (
+                    <TableRow key={c.id} className="hover:bg-muted/50">
+                      <TableCell className="pl-6">
+                        <Checkbox
+                          checked={selectedClassIds.has(c.id)}
+                          onCheckedChange={() => toggleSelectClass(c.id)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{c.name}</p>
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant="secondary" className="font-mono text-xs">
+                              {c.code}
+                            </Badge>
+                            {c.subject && <span className="text-xs text-muted-foreground">{c.subject}</span>}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-7 w-7">
+                            <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+                              {c.teacherName
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                                .slice(0, 2)
+                                .toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm">{c.teacherName}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-sm">{c.studentCount}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-sm">{c.assignmentCount}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
+                        {c.schedule || "—"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`h-2 w-2 rounded-full ${
+                              c.status === "active" ? "bg-emerald-500" : c.status === "archived" ? "bg-amber-500" : "bg-muted"
+                            }`}
+                          />
+                          <span className="text-sm capitalize">{c.status}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right pr-6">
+                        <div className="flex justify-end gap-1">
+                          <Button size="icon-sm" variant="ghost" onClick={() => openClassDetails(c)} title="View details">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon-sm" variant="ghost" onClick={() => openManageStudents(c)} title="Manage students">
+                            <Users className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon-sm" variant="ghost" onClick={() => openEditModal(c)} title="Edit class">
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            onClick={() => handleToggleArchive(c)}
+                            title={c.status === "archived" ? "Unarchive" : "Archive"}
+                          >
+                            {c.status === "archived" ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                          </Button>
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteClass(c.id)}
+                            title="Delete class"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} className="h-32 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                        <BookOpen className="h-8 w-8" />
+                        <p className="text-sm">No classes found</p>
+                        <p className="text-xs">Try adjusting your filters or search query</p>
                       </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={8}
-                    className="px-4 py-8 text-center text-sm text-muted-foreground"
-                  >
-                    No classes found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </SectionCard>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* ─── Add / Edit Class Dialog ────────────────────────────────── */}
       <Dialog open={isModalOpen} onOpenChange={closeModal}>
@@ -615,33 +974,26 @@ export default function AdminClassesPage() {
                   id="cls-year"
                   type="number"
                   value={formData.year}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      year: parseInt(e.target.value) || new Date().getFullYear(),
-                    }))
-                  }
+                  onChange={(e) => setFormData((prev) => ({ ...prev, year: parseInt(e.target.value) || new Date().getFullYear() }))}
                 />
               </div>
 
               {editingClass && (
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="cls-status">Status</Label>
-                  <select
-                    id="cls-status"
-                    className="w-full rounded-xl border border-border bg-background px-4 py-2 text-sm"
+                  <Select
                     value={formData.status}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        status: e.target.value as ClassStatus,
-                      }))
-                    }
+                    onValueChange={(v) => setFormData((prev) => ({ ...prev, status: v as ClassStatus }))}
                   >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="archived">Archived</option>
-                  </select>
+                    <SelectTrigger id="cls-status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="archived">Archived</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 
@@ -650,11 +1002,9 @@ export default function AdminClassesPage() {
                 <textarea
                   id="cls-desc"
                   rows={3}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-2 text-sm"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   value={formData.description}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, description: e.target.value }))
-                  }
+                  onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                   placeholder="Brief description of the class..."
                 />
               </div>
@@ -665,9 +1015,7 @@ export default function AdminClassesPage() {
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
-            <Button onClick={handleSaveClass}>
-              {editingClass ? "Update Class" : "Save Class"}
-            </Button>
+            <Button onClick={handleSaveClass}>{editingClass ? "Update Class" : "Save Class"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -685,11 +1033,13 @@ export default function AdminClassesPage() {
 
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <StatusBadge status={detailsClass.status} />
-                <span className="rounded bg-muted px-2 py-0.5 text-xs font-mono">
+                <Badge variant={detailsClass.status === "active" ? "default" : detailsClass.status === "archived" ? "secondary" : "outline"}>
+                  {detailsClass.status}
+                </Badge>
+                <Badge variant="secondary" className="font-mono">
                   {detailsClass.code}
-                </span>
-                <span className="text-sm text-muted-foreground">{detailsClass.subject}</span>
+                </Badge>
+                {detailsClass.subject && <span className="text-sm text-muted-foreground">{detailsClass.subject}</span>}
               </div>
 
               <p className="text-sm text-muted-foreground">{detailsClass.description}</p>
@@ -698,12 +1048,8 @@ export default function AdminClassesPage() {
                 <DetailItem icon={<Users className="h-4 w-4" />} label="Teacher" value={detailsClass.teacherName} />
                 <DetailItem icon={<GraduationCap className="h-4 w-4" />} label="Students" value={detailsClass.studentCount.toString()} />
                 <DetailItem icon={<FileText className="h-4 w-4" />} label="Assignments" value={detailsClass.assignmentCount.toString()} />
-                {detailsClass.schedule && (
-                  <DetailItem icon={<Clock className="h-4 w-4" />} label="Schedule" value={detailsClass.schedule} />
-                )}
-                {detailsClass.room && (
-                  <DetailItem icon={<MapPin className="h-4 w-4" />} label="Room" value={detailsClass.room} />
-                )}
+                {detailsClass.schedule && <DetailItem icon={<Clock className="h-4 w-4" />} label="Schedule" value={detailsClass.schedule} />}
+                {detailsClass.room && <DetailItem icon={<MapPin className="h-4 w-4" />} label="Room" value={detailsClass.room} />}
                 {detailsClass.semester && (
                   <DetailItem icon={<Calendar className="h-4 w-4" />} label="Semester" value={`${detailsClass.semester} ${detailsClass.year}`} />
                 )}
@@ -729,12 +1075,7 @@ export default function AdminClassesPage() {
       )}
 
       {/* ─── Manage Students Dialog ─────────────────────────────────── */}
-      {managingClass && (
-        <ManageStudentsModal
-          classItem={managingClass}
-          onClose={closeManageStudents}
-        />
-      )}
+      {managingClass && <ManageStudentsModal classItem={managingClass} onClose={closeManageStudents} />}
 
       {/* ─── Delete Confirmation ────────────────────────────────────── */}
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
@@ -742,8 +1083,7 @@ export default function AdminClassesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the class
-              and all associated data including assignments and enrollments.
+              This action cannot be undone. This will permanently delete the class and all associated data including assignments and enrollments.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -771,259 +1111,12 @@ export default function AdminClassesPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmBulkAction}
-              className={bulkAction === "delete" ? "bg-destructive text-destructive-foreground" : ""}
-            >
+            <AlertDialogAction onClick={confirmBulkAction} className={bulkAction === "delete" ? "bg-destructive text-destructive-foreground" : ""}>
               Confirm
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </PageShell>
-  );
-}
-
-// ─── Detail Item Sub-Component ────────────────────────────────────────
-function DetailItem({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-center gap-2 rounded-lg border p-3">
-      <div className="text-muted-foreground">{icon}</div>
-      <div>
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-sm font-medium">{value}</p>
-      </div>
     </div>
-  );
-}
-
-// ─── Teacher Selector Sub-Component ───────────────────────────────────
-function TeacherSelector({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (val: string) => void;
-}) {
-  const { data: users = [], isLoading } = useUsers({ role: "teacher" });
-
-  return (
-    <div className="space-y-2">
-      <Label htmlFor="cls-teacher">Assign Teacher</Label>
-      <select
-        id="cls-teacher"
-        className="w-full rounded-xl border border-border bg-background px-4 py-2 text-sm"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        <option value="">Select a teacher...</option>
-        {isLoading ? (
-          <option disabled>Loading teachers...</option>
-        ) : (
-          users.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.fullName} ({u.email})
-            </option>
-          ))
-        )}
-      </select>
-    </div>
-  );
-}
-
-// ─── Manage Students Modal ────────────────────────────────────────────
-function ManageStudentsModal({
-  classItem,
-  onClose,
-}: {
-  classItem: Class;
-  onClose: () => void;
-}) {
-  const { data: students = [], isLoading } = useClassStudents(classItem.id);
-  const enrollStudent = useEnrollStudent();
-  const removeStudent = useRemoveStudent();
-  const { data: allUsers = [] } = useUsers({ role: "student" });
-  const { toast } = useToast();
-
-  const [studentEmail, setStudentEmail] = useState("");
-  const [searchStudent, setSearchStudent] = useState("");
-  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
-  const [removeStudentId, setRemoveStudentId] = useState<number | null>(null);
-
-  const handleEnroll = () => {
-    const student = allUsers.find((u) => u.email === studentEmail.trim());
-    if (!student) {
-      toast({ title: "Student not found", description: "No student matches that email.", variant: "destructive" });
-      return;
-    }
-    enrollStudent.mutate(
-      { classId: classItem.id, studentId: parseInt(student.id) },
-      {
-        onSuccess: () => {
-          setStudentEmail("");
-          toast({ title: "Student enrolled", description: "The student has been added to the class." });
-        },
-      }
-    );
-  };
-
-  const handleRemove = (studentId: number) => {
-    setRemoveStudentId(studentId);
-    setRemoveConfirmOpen(true);
-  };
-
-  const confirmRemoveStudent = () => {
-    if (removeStudentId) {
-      removeStudent.mutate(
-        { classId: classItem.id, studentId: removeStudentId },
-        { onSuccess: () => toast({ title: "Student removed", description: "The student has been removed from the class." }) }
-      );
-      setRemoveConfirmOpen(false);
-      setRemoveStudentId(null);
-    }
-  };
-
-  const filteredStudents = students.filter((s) => {
-    if (!searchStudent) return true;
-    const q = searchStudent.toLowerCase();
-    return (
-      s.studentName.toLowerCase().includes(q) ||
-      s.studentEmail.toLowerCase().includes(q)
-    );
-  });
-
-  return (
-    <>
-      <Dialog open={!!classItem} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Manage Students
-            </DialogTitle>
-            <p className="text-sm text-muted-foreground">
-              {classItem.name} ({classItem.code})
-            </p>
-          </DialogHeader>
-
-          {/* Enroll Student */}
-          <SectionCard title="Enroll Student">
-            <div className="flex gap-2">
-              <select
-                className="flex-1 rounded-xl border border-border bg-background px-4 py-2 text-sm"
-                value={studentEmail}
-                onChange={(e) => setStudentEmail(e.target.value)}
-              >
-                <option value="">Select a student...</option>
-                {allUsers
-                  .filter(
-                    (u) =>
-                      !students.some((s) => s.studentEmail === u.email)
-                  )
-                  .map((u) => (
-                    <option key={u.id} value={u.email}>
-                      {u.fullName} ({u.email})
-                    </option>
-                  ))}
-              </select>
-              <Button onClick={handleEnroll} disabled={!studentEmail || enrollStudent.isPending}>
-                {enrollStudent.isPending ? "Enrolling..." : "Enroll"}
-              </Button>
-            </div>
-          </SectionCard>
-
-          {/* Student List */}
-          <SectionCard
-            title={`Enrolled Students (${filteredStudents.length})`}
-            action={
-              <Input
-                placeholder="Search..."
-                className="w-48"
-                value={searchStudent}
-                onChange={(e) => setSearchStudent(e.target.value)}
-              />
-            }
-          >
-            {isLoading ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">Loading students...</p>
-            ) : filteredStudents.length > 0 ? (
-              <div className="space-y-2">
-                {filteredStudents.map((s) => (
-                  <div
-                    key={s.id}
-                    className="flex items-center justify-between rounded-lg border p-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                        {s.studentName.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{s.studentName}</p>
-                        <p className="text-xs text-muted-foreground">{s.studentEmail}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <StatusBadge status={s.status} />
-                      {s.grade != null && (
-                        <span className="text-xs font-medium">Grade: {s.grade}</span>
-                      )}
-                      {s.submissionCount != null && (
-                        <span className="text-xs text-muted-foreground">
-                          {s.submissionCount} submissions
-                        </span>
-                      )}
-                      <Button
-                        size="icon"
-                        variant="destructive"
-                        onClick={() => handleRemove(s.studentId)}
-                        title="Remove student"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="py-4 text-center text-sm text-muted-foreground">
-                No students enrolled yet.
-              </p>
-            )}
-          </SectionCard>
-
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Close</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Remove Student Confirmation */}
-      <AlertDialog open={removeConfirmOpen} onOpenChange={setRemoveConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove student?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will unenroll the student from this class. Their submissions and grades will be retained in the system.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRemoveStudent} className="bg-destructive text-destructive-foreground">
-              Remove Student
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
   );
 }
