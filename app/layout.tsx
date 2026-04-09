@@ -4,6 +4,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ClientProviders } from "@/components/providers/client-providers";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 import "./globals.css";
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
@@ -73,9 +74,11 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
-        <ThemeProvider>
-          <ClientProviders>{children}</ClientProviders>
-        </ThemeProvider>
+        <TooltipProvider delayDuration={0}>
+          <ThemeProvider>
+            <ClientProviders>{children}</ClientProviders>
+          </ThemeProvider>
+        </TooltipProvider>
       </body>
     </html>
   );
