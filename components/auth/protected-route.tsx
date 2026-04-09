@@ -35,6 +35,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
           break;
         default:
           router.push('/dashboard');
+          break
       }
     }
   }, [isLoading, isAuthenticated, user, router, allowedRoles]);

@@ -6,7 +6,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ClientProviders } from "@/components/providers/client-providers";
 
 import "./globals.css";
-const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
+const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
 export const poppins = Poppins({
   subsets: ["latin"],
@@ -68,7 +68,7 @@ export default function RootLayout({
         poppins.className,
         inter.className,
         "font-sans",
-        geist.variable,
+        inter.variable,
       )}
       suppressHydrationWarning
     >

@@ -13,8 +13,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { user } = useAuth();
-  const currentRole = user?.role ?? "student";
-
+  const currentRole = user?.role ??  "student";
   return (
     <SidebarProvider>
       <div className="min-h-screen bg-muted/30">
