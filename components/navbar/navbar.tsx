@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import styles from "./style.module.css";
 import Image from "next/image";
-import { ThemeToggle } from "../landing-page-features/theme-toggle";
+import { ThemeToggle } from "@/app/(marketing)/components/theme-toggle";
 import { Menu, X } from "lucide-react";
 
 const navItems = [

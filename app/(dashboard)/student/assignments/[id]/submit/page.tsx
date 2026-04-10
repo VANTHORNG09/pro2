@@ -6,7 +6,7 @@ import { ArrowLeft, FileText, Calendar, Award } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/shared/page-header";
 import { PageShell } from "@/components/shared/page-shell";
-import { SubmissionForm } from "@/components/assignments/SubmissionForm";
+import { SubmitForm } from './form';
 import { useAssignment } from "@/lib/hooks/queries/useAssignments";
 import { useMySubmission } from "@/lib/hooks/queries/useSubmissions";
 import { Loader2 } from "lucide-react";

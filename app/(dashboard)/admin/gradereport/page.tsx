@@ -1,370 +1,488 @@
-// app/(dashboard)/admin/gradereport/page.tsx
 "use client";
 
-import { useState, useMemo } from "react";
-import { Download, Search, BookOpen, Users, TrendingUp, Award, FileText } from "lucide-react";
+import * as React from "react";
+import {
+  Award,
+  TrendingUp,
+  TrendingDown,
+  Download,
+  Search,
+  Filter,
+  BarChart3,
+  PieChart,
+  Users,
+  BookOpen,
+  Calendar,
+  FileText,
+  Mail,
+  Printer,
+} from "lucide-react";
 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PageShell } from "@/components/shared/page-shell";
-import { PageHeader } from "@/components/shared/page-header";
-import { SectionCard } from "@/components/shared/section-card";
-import { StatusBadge } from "@/components/shared/status-badge";
-import { StatCard } from "@/components/shared/stat-card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 
-import { useClasses } from "@/lib/hooks/queries/useClasses";
-import { useClassStudents } from "@/lib/hooks/queries/useClasses";
-import type { Class } from "@/lib/types/classes";
-import type { StudentInClass } from "@/lib/types/classes";
+// --- Types ---
 
-// ─── Grade helpers ─────────────────────────────────────────────────────
-function gradeLetter(g: number): string {
-  if (g >= 93) return "A";
-  if (g >= 90) return "A-";
-  if (g >= 87) return "B+";
-  if (g >= 83) return "B";
-  if (g >= 80) return "B-";
-  if (g >= 77) return "C+";
-  if (g >= 73) return "C";
-  if (g >= 70) return "C-";
-  if (g >= 67) return "D+";
-  if (g >= 60) return "D";
-  return "F";
+interface GradeReport {
+  class: {
+    id: string;
+    name: string;
+    code: string;
+    teacher: string;
+  };
+  stats: {
+    totalStudents: number;
+    averageGrade: number;
+    highestGrade: number;
+    lowestGrade: number;
+    passRate: number;
+    gradeDistribution: {
+      A: number;
+      B: number;
+      C: number;
+      D: number;
+      F: number;
+    };
+  };
+  assignments: number;
+  semester: string;
+  year: number;
 }
 
-function gradeColor(g: number): string {
-  if (g >= 90) return "text-emerald-400";
-  if (g >= 80) return "text-blue-400";
-  if (g >= 70) return "text-amber-400";
-  return "text-red-400";
-}
+// --- Mock Data ---
 
-// ─── Export to CSV ─────────────────────────────────────────────────────
-function exportGradeReportToCSV(data: { class: Class; students: StudentInClass[] }[]) {
-  const headers = ["Class", "Code", "Student", "Email", "Grade", "Letter", "Submissions", "Graded", "Pending", "Status"];
-  const rows: string[] = [];
-  data.forEach(({ class: cls, students }) => {
-    students.forEach((s) => {
-      rows.push([
-        cls.name,
-        cls.code,
-        s.studentName,
-        s.studentEmail,
-        s.grade?.toString() ?? "N/A",
-        s.grade != null ? gradeLetter(s.grade) : "N/A",
-        s.submissionCount,
-        s.gradedCount,
-        s.pendingCount,
-        s.status,
-      ].map((c) => `"${c}"`).join(","));
-    });
-  });
+const mockGradeReports: GradeReport[] = [
+  {
+    class: {
+      id: "C001",
+      name: "Data Structures & Algorithms",
+      code: "CS-401",
+      teacher: "Prof. Michael Chen",
+    },
+    stats: {
+      totalStudents: 28,
+      averageGrade: 85.4,
+      highestGrade: 98,
+      lowestGrade: 72,
+      passRate: 92,
+      gradeDistribution: {
+        A: 12,
+        B: 10,
+        C: 4,
+        D: 1,
+        F: 1,
+      },
+    },
+    assignments: 15,
+    semester: "Spring",
+    year: 2026,
+  },
+  {
+    class: {
+      id: "C002",
+      name: "Machine Learning",
+      code: "CS-450",
+      teacher: "Dr. Alex Kumar",
+    },
+    stats: {
+      totalStudents: 35,
+      averageGrade: 87.2,
+      highestGrade: 96,
+      lowestGrade: 75,
+      passRate: 94,
+      gradeDistribution: {
+        A: 15,
+        B: 12,
+        C: 5,
+        D: 2,
+        F: 1,
+      },
+    },
+    assignments: 12,
+    semester: "Spring",
+    year: 2026,
+  },
+  {
+    class: {
+      id: "C003",
+      name: "Web Development",
+      code: "CS-301",
+      teacher: "Dr. Sarah Johnson",
+    },
+    stats: {
+      totalStudents: 42,
+      averageGrade: 82.1,
+      highestGrade: 95,
+      lowestGrade: 68,
+      passRate: 88,
+      gradeDistribution: {
+        A: 8,
+        B: 18,
+        C: 10,
+        D: 4,
+        F: 2,
+      },
+    },
+    assignments: 14,
+    semester: "Spring",
+    year: 2026,
+  },
+  {
+    class: {
+      id: "C004",
+      name: "Database Systems",
+      code: "CS-350",
+      teacher: "Prof. Michael Chen",
+    },
+    stats: {
+      totalStudents: 30,
+      averageGrade: 79.8,
+      highestGrade: 92,
+      lowestGrade: 65,
+      passRate: 83,
+      gradeDistribution: {
+        A: 4,
+        B: 12,
+        C: 8,
+        D: 4,
+        F: 2,
+      },
+    },
+    assignments: 10,
+    semester: "Spring",
+    year: 2026,
+  },
+];
 
-  const csv = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
-  const link = document.createElement("a");
-  link.href = encodeURI(csv);
-  link.download = `grade-report-${new Date().toISOString().slice(0, 10)}.csv`;
-  link.click();
-}
+// --- Components ---
 
-// ─── Grade Bar Component ──────────────────────────────────────────────
-function GradeBar({ value, max = 100 }: { value: number; max?: number }) {
-  const pct = Math.min((value / max) * 100, 100);
+function GradeDistributionChart({ distribution }: { distribution: GradeReport["stats"]["gradeDistribution"] }) {
+  const total = Object.values(distribution).reduce((sum, count) => sum + count, 0);
+
   return (
-    <div className="h-2 w-full rounded-full bg-muted/50">
-      <div
-        className="h-full rounded-full transition-all"
-        style={{
-          width: `${pct}%`,
-          background: pct >= 90 ? "rgb(52 211 153)" : pct >= 80 ? "rgb(96 165 250)" : pct >= 70 ? "rgb(251 191 36)" : "rgb(248 113 113)",
-        }}
-      />
+    <div className="space-y-2">
+      {Object.entries(distribution).map(([grade, count]) => {
+        const percentage = Math.round((count / total) * 100);
+        const colorClass = {
+          A: "bg-emerald-500",
+          B: "bg-blue-500",
+          C: "bg-amber-500",
+          D: "bg-orange-500",
+          F: "bg-red-500",
+        }[grade as keyof typeof distribution] || "bg-gray-500";
+
+        return (
+          <div key={grade} className="flex items-center gap-3">
+            <div className="w-8 text-sm font-medium">{grade}</div>
+            <div className="flex-1 bg-muted rounded-full h-2">
+              <div
+                className={`h-2 rounded-full ${colorClass}`}
+                style={{ width: `${percentage}%` }}
+              />
+            </div>
+            <div className="w-12 text-right text-sm">{count} ({percentage}%)</div>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-export default function AdminGradeReportPage() {
-  const { data: classes = [], isLoading: classesLoading } = useClasses({});
-  const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
-  const [search, setSearch] = useState("");
+function ClassGradeCard({ report }: { report: GradeReport }) {
+  const getGradeColor = (grade: number) => {
+    if (grade >= 90) return "text-emerald-600";
+    if (grade >= 80) return "text-blue-600";
+    if (grade >= 70) return "text-amber-600";
+    if (grade >= 60) return "text-orange-600";
+    return "text-red-600";
+  };
 
-  const { data: students = [], isLoading: studentsLoading } = useClassStudents(
-    selectedClassId ?? 0
-  );
-
-  const selectedClass = classes.find((c) => c.id === selectedClassId);
-
-  // All students across all classes (for overview)
-  const allStudentsWithClasses = useMemo(() => {
-    const result: { class: Class; student: StudentInClass }[] = [];
-    // We show the selected class students or a summary
-    return result;
-  }, []);
-
-  // Stats
-  const stats = useMemo(() => {
-    if (students.length === 0) {
-      return {
-        avgGrade: 0,
-        highestGrade: 0,
-        lowestGrade: 0,
-        totalSubmissions: 0,
-        passRate: 0,
-        gradedCount: 0,
-        pendingCount: 0,
-      };
-    }
-    const graded = students.filter((s) => s.grade != null);
-    const grades = graded.map((s) => s.grade!);
-    const avgGrade = grades.length > 0 ? grades.reduce((a, b) => a + b, 0) / grades.length : 0;
-    const highestGrade = grades.length > 0 ? Math.max(...grades) : 0;
-    const lowestGrade = grades.length > 0 ? Math.min(...grades) : 0;
-    const totalSubmissions = students.reduce((sum, s) => sum + s.submissionCount, 0);
-    const passRate = grades.filter((g) => g >= 60).length / grades.length * 100;
-    const gradedCount = students.reduce((sum, s) => sum + s.gradedCount, 0);
-    const pendingCount = students.reduce((sum, s) => sum + s.pendingCount, 0);
-
-    return { avgGrade, highestGrade, lowestGrade, totalSubmissions, passRate, gradedCount, pendingCount };
-  }, [students]);
-
-  // Grade distribution
-  const gradeDistribution = useMemo(() => {
-    if (students.length === 0) return [];
-    const buckets = [
-      { label: "A (90-100)", count: 0, color: "bg-emerald-500" },
-      { label: "B (80-89)", count: 0, color: "bg-blue-500" },
-      { label: "C (70-79)", count: 0, color: "bg-amber-500" },
-      { label: "D (60-69)", count: 0, color: "bg-orange-500" },
-      { label: "F (<60)", count: 0, color: "bg-red-500" },
-    ];
-    students.forEach((s) => {
-      if (s.grade == null) return;
-      if (s.grade >= 90) buckets[0].count++;
-      else if (s.grade >= 80) buckets[1].count++;
-      else if (s.grade >= 70) buckets[2].count++;
-      else if (s.grade >= 60) buckets[3].count++;
-      else buckets[4].count++;
-    });
-    return buckets;
-  }, [students]);
-
-  // Filter students
-  const filteredStudents = useMemo(() => {
-    if (!search) return students;
-    const q = search.toLowerCase();
-    return students.filter(
-      (s) => s.studentName.toLowerCase().includes(q) || s.studentEmail.toLowerCase().includes(q)
-    );
-  }, [students, search]);
-
-  const handleExport = () => {
-    if (selectedClassId && selectedClass) {
-      exportGradeReportToCSV([{ class: selectedClass, students: filteredStudents }]);
-    } else {
-      const allData: { class: Class; students: StudentInClass[] }[] = [];
-      // If no class selected, export what we can from mock data
-      alert("Select a class to export its grade report.");
-    }
+  const getPassRateColor = (rate: number) => {
+    if (rate >= 90) return "text-emerald-600";
+    if (rate >= 80) return "text-blue-600";
+    return "text-amber-600";
   };
 
   return (
-    <PageShell>
-      <PageHeader
-        title="Grade Reports"
-        description="View and analyze student grades across all classes."
-        action={
-          <Button onClick={handleExport} disabled={students.length === 0}>
-            <Download className="mr-2 h-4 w-4" />
-            Export Report
-          </Button>
-        }
-      />
+    <Card className="hover:bg-muted/50 transition-colors">
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle className="text-lg">{report.class.name}</CardTitle>
+            <CardDescription className="flex items-center gap-2">
+              <Badge variant="secondary">{report.class.code}</Badge>
+              <span>{report.class.teacher}</span>
+            </CardDescription>
+          </div>
+          <div className="text-right">
+            <div className={`text-2xl font-bold ${getGradeColor(report.stats.averageGrade)}`}>
+              {report.stats.averageGrade}%
+            </div>
+            <div className="text-xs text-muted-foreground">Average Grade</div>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          <div className="text-center">
+            <div className="text-lg font-semibold">{report.stats.totalStudents}</div>
+            <div className="text-xs text-muted-foreground">Students</div>
+          </div>
+          <div className="text-center">
+            <div className={`text-lg font-semibold ${getPassRateColor(report.stats.passRate)}`}>
+              {report.stats.passRate}%
+            </div>
+            <div className="text-xs text-muted-foreground">Pass Rate</div>
+          </div>
+          <div className="text-center">
+            <div className="text-lg font-semibold">{report.stats.highestGrade}%</div>
+            <div className="text-xs text-muted-foreground">Highest</div>
+          </div>
+          <div className="text-center">
+            <div className="text-lg font-semibold">{report.stats.lowestGrade}%</div>
+            <div className="text-xs text-muted-foreground">Lowest</div>
+          </div>
+        </div>
 
-      {/* Stats Overview */}
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          title="Average Grade"
-          value={stats.avgGrade > 0 ? `${stats.avgGrade.toFixed(1)}` : "—"}
-          subtitle={stats.avgGrade > 0 ? gradeLetter(stats.avgGrade) : "No data"}
-          icon={<Award className="h-4 w-4" />}
-        />
-        <StatCard
-          title="Pass Rate"
-          value={stats.passRate > 0 ? `${stats.passRate.toFixed(0)}%` : "—"}
-          subtitle="Grade ≥ 60"
-          icon={<TrendingUp className="h-4 w-4" />}
-        />
-        <StatCard
-          title="Total Submissions"
-          value={stats.totalSubmissions}
-          subtitle="Across all students"
-          icon={<FileText className="h-4 w-4" />}
-        />
-        <StatCard
-          title="Grading Progress"
-          value={`${stats.gradedCount} / ${stats.gradedCount + stats.pendingCount}`}
-          subtitle={`${stats.pendingCount} pending`}
-          icon={<BookOpen className="h-4 w-4" />}
-        />
+        <div>
+          <h4 className="text-sm font-medium mb-3">Grade Distribution</h4>
+          <GradeDistributionChart distribution={report.stats.gradeDistribution} />
+        </div>
+
+        <div className="flex items-center justify-between mt-4 pt-4 border-t">
+          <div className="text-sm text-muted-foreground">
+            {report.assignments} assignments • {report.semester} {report.year}
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline">
+              <Mail className="h-3.5 w-3.5 mr-1" />
+              Email
+            </Button>
+            <Button size="sm" variant="outline">
+              <Printer className="h-3.5 w-3.5 mr-1" />
+              Print
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Main Page ---
+
+export default function GradeReportPage() {
+  const [reports, setReports] = React.useState<GradeReport[]>(mockGradeReports);
+  const [search, setSearch] = React.useState("");
+  const [sortBy, setSortBy] = React.useState("average");
+  const [semesterFilter, setSemesterFilter] = React.useState("all");
+
+  const filteredReports = reports.filter((report) => {
+    const matchSearch =
+      !search ||
+      report.class.name.toLowerCase().includes(search.toLowerCase()) ||
+      report.class.code.toLowerCase().includes(search.toLowerCase()) ||
+      report.class.teacher.toLowerCase().includes(search.toLowerCase());
+    const matchSemester = semesterFilter === "all" || report.semester === semesterFilter;
+    return matchSearch && matchSemester;
+  });
+
+  const sortedReports = [...filteredReports].sort((a, b) => {
+    switch (sortBy) {
+      case "average":
+        return b.stats.averageGrade - a.stats.averageGrade;
+      case "passRate":
+        return b.stats.passRate - a.stats.passRate;
+      case "students":
+        return b.stats.totalStudents - a.stats.totalStudents;
+      case "assignments":
+        return b.assignments - a.assignments;
+      default:
+        return 0;
+    }
+  });
+
+  const overallStats = {
+    totalClasses: reports.length,
+    totalStudents: reports.reduce((sum, r) => sum + r.stats.totalStudents, 0),
+    overallAverage: Math.round(
+      reports.reduce((sum, r) => sum + r.stats.averageGrade * r.stats.totalStudents, 0) /
+        reports.reduce((sum, r) => sum + r.stats.totalStudents, 0)
+    ),
+    overallPassRate: Math.round(
+      reports.reduce((sum, r) => sum + r.stats.passRate * r.stats.totalStudents, 0) /
+        reports.reduce((sum, r) => sum + r.stats.totalStudents, 0)
+    ),
+    totalAssignments: reports.reduce((sum, r) => sum + r.assignments, 0),
+  };
+
+  const handleExport = (format: "pdf" | "csv" | "excel") => {
+    // Mock export functionality
+    console.log(`Exporting grade reports as ${format}`);
+  };
+
+  const handleBulkEmail = () => {
+    // Mock bulk email functionality
+    console.log("Sending bulk email with grade reports");
+  };
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Page Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Grade Reports</h1>
+          <p className="text-sm text-muted-foreground">
+            Generate and manage comprehensive grade reports for all classes.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleBulkEmail}>
+            <Mail className="mr-2 h-4 w-4" />
+            Email All
+          </Button>
+          <Select onValueChange={(value: "pdf" | "csv" | "excel") => handleExport(value)}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Export" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="pdf">Export PDF</SelectItem>
+              <SelectItem value="csv">Export CSV</SelectItem>
+              <SelectItem value="excel">Export Excel</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {/* Class Selector & Filters */}
-      <SectionCard title="Select Class">
-        <div className="flex flex-wrap gap-3">
-          <div className="flex-1 min-w-[240px]">
-            <select
-              className="w-full rounded-xl border border-border bg-background px-4 py-2 text-sm"
-              value={selectedClassId ?? ""}
-              onChange={(e) => setSelectedClassId(e.target.value ? Number(e.target.value) : null)}
-            >
-              <option value="">All Classes</option>
-              {classesLoading ? (
-                <option disabled>Loading classes...</option>
-              ) : (
-                classes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.code})
-                  </option>
-                ))
-              )}
-            </select>
-          </div>
-          {selectedClassId && (
-            <div className="flex-1 min-w-[200px]">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search students..."
-                  className="pl-10"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
+      {/* Overall Stats */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className="rounded-xl bg-blue-500/10 p-3">
+              <BookOpen className="h-5 w-5 text-blue-500" />
             </div>
-          )}
-        </div>
-      </SectionCard>
-
-      {/* Grade Distribution Chart */}
-      {selectedClassId && gradeDistribution.length > 0 && (
-        <SectionCard title="Grade Distribution">
-          <div className="flex flex-wrap gap-4">
-            {gradeDistribution.map((bucket) => {
-              const maxCount = Math.max(...gradeDistribution.map((b) => b.count), 1);
-              const height = (bucket.count / maxCount) * 100;
-              return (
-                <div key={bucket.label} className="flex flex-col items-center gap-2 flex-1 min-w-[60px]">
-                  <span className="text-sm font-medium">{bucket.count}</span>
-                  <div className="h-24 w-full rounded-lg bg-muted/30 flex items-end overflow-hidden">
-                    <div
-                      className={`w-full rounded-t-lg ${bucket.color} transition-all`}
-                      style={{ height: `${height}%` }}
-                    />
-                  </div>
-                  <span className="text-xs text-muted-foreground text-center">{bucket.label}</span>
-                </div>
-              );
-            })}
-          </div>
-        </SectionCard>
-      )}
-
-      {/* Student Grades Table */}
-      {selectedClassId && (
-        <SectionCard
-          title={`Student Grades — ${selectedClass?.name ?? "Unknown"}`}
-          description={`${filteredStudents.length} student(s) found`}
-        >
-          {studentsLoading ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">Loading students...</p>
-          ) : filteredStudents.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full table-auto border-collapse text-left">
-                <thead className="border-b border-border/60">
-                  <tr>
-                    <th className="px-4 py-3">Student</th>
-                    <th className="px-4 py-3">Grade</th>
-                    <th className="px-4 py-3">Letter</th>
-                    <th className="px-4 py-3">Submissions</th>
-                    <th className="px-4 py-3">Graded</th>
-                    <th className="px-4 py-3">Pending</th>
-                    <th className="px-4 py-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredStudents.map((s) => (
-                    <tr key={s.id} className="border-b border-border/20 hover:bg-muted/30">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                            {s.studentName.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium">{s.studentName}</p>
-                            <p className="text-xs text-muted-foreground">{s.studentEmail}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {s.grade != null ? (
-                          <div className="flex flex-col gap-1">
-                            <span className={`text-lg font-bold ${gradeColor(s.grade)}`}>
-                              {s.grade.toFixed(1)}
-                            </span>
-                            <GradeBar value={s.grade} />
-                          </div>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">N/A</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {s.grade != null ? (
-                          <span className={`rounded-lg bg-muted px-3 py-1 text-sm font-semibold ${gradeColor(s.grade)}`}>
-                            {gradeLetter(s.grade)}
-                          </span>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm">{s.submissionCount}</td>
-                      <td className="px-4 py-3 text-sm">{s.gradedCount}</td>
-                      <td className="px-4 py-3 text-sm">
-                        {s.pendingCount > 0 ? (
-                          <span className="text-amber-400 font-medium">{s.pendingCount}</span>
-                        ) : (
-                          <span className="text-emerald-400">{s.pendingCount}</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <StatusBadge status={s.status} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              No students found in this class.
-            </p>
-          )}
-        </SectionCard>
-      )}
-
-      {/* Empty State */}
-      {!selectedClassId && (
-        <SectionCard title="">
-          <div className="flex flex-col items-center gap-4 py-12 text-center">
-            <BookOpen className="h-12 w-12 text-muted-foreground/50" />
             <div>
-              <h3 className="text-lg font-medium">Select a Class</h3>
-              <p className="text-sm text-muted-foreground">
-                Choose a class above to view student grades and analytics.
-              </p>
+              <p className="text-2xl font-bold">{overallStats.totalClasses}</p>
+              <p className="text-sm text-muted-foreground">Classes</p>
             </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className="rounded-xl bg-emerald-500/10 p-3">
+              <Users className="h-5 w-5 text-emerald-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{overallStats.totalStudents}</p>
+              <p className="text-sm text-muted-foreground">Students</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className="rounded-xl bg-purple-500/10 p-3">
+              <Award className="h-5 w-5 text-purple-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{overallStats.overallAverage}%</p>
+              <p className="text-sm text-muted-foreground">Avg Grade</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className="rounded-xl bg-amber-500/10 p-3">
+              <TrendingUp className="h-5 w-5 text-amber-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{overallStats.overallPassRate}%</p>
+              <p className="text-sm text-muted-foreground">Pass Rate</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className="rounded-xl bg-orange-500/10 p-3">
+              <FileText className="h-5 w-5 text-orange-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{overallStats.totalAssignments}</p>
+              <p className="text-sm text-muted-foreground">Assignments</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Class Grade Reports</CardTitle>
+          <CardDescription>{sortedReports.length} reports found</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search classes..."
+                className="pl-9"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="average">Average Grade</SelectItem>
+                <SelectItem value="passRate">Pass Rate</SelectItem>
+                <SelectItem value="students">Students</SelectItem>
+                <SelectItem value="assignments">Assignments</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={semesterFilter} onValueChange={setSemesterFilter}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Semester" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Semesters</SelectItem>
+                <SelectItem value="Spring">Spring</SelectItem>
+                <SelectItem value="Fall">Fall</SelectItem>
+                <SelectItem value="Summer">Summer</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </SectionCard>
-      )}
-    </PageShell>
+        </CardContent>
+      </Card>
+
+      {/* Reports List */}
+      <div className="space-y-4">
+        {sortedReports.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <FileText className="h-12 w-12 mb-3 opacity-50" />
+              <p className="text-sm font-medium">No grade reports found</p>
+              <p className="text-xs mt-1">Try adjusting your filters</p>
+            </CardContent>
+          </Card>
+        ) : (
+          sortedReports.map((report) => (
+            <ClassGradeCard key={report.class.id} report={report} />
+          ))
+        )}
+      </div>
+    </div>
   );
 }

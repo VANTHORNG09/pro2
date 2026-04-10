@@ -18,6 +18,12 @@ import {
   MessageSquare,
   ClipboardList,
   UserCheck,
+  Download,
+  Eye,
+  Filter,
+  TrendingUp,
+  GraduationCap,
+  AlertTriangle,
 } from "lucide-react";
 import {
   BarChart,
@@ -46,140 +52,50 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
 
 // --- Mock Data ---
 
 const teacherStats = [
-  {
-    title: "My Classes",
-    value: "5",
-    change: "+1",
-    trend: "up",
-    icon: BookOpen,
-    description: "this semester",
-  },
-  {
-    title: "Total Students",
-    value: "248",
-    change: "+12",
-    trend: "up",
-    icon: Users,
-    description: "across all classes",
-  },
-  {
-    title: "Pending Grading",
-    value: "34",
-    change: "-8",
-    trend: "down",
-    icon: Clock,
-    description: "awaiting review",
-  },
-  {
-    title: "Avg Grade",
-    value: "82.5%",
-    change: "+3.2%",
-    trend: "up",
-    icon: BarChart3,
-    description: "overall average",
-  },
+  { title: "My Classes", value: "5", change: "+1", trend: "up" as const, icon: BookOpen, description: "this semester" },
+  { title: "Total Students", value: "248", change: "+12", trend: "up" as const, icon: Users, description: "across all classes" },
+  { title: "Pending Grading", value: "34", change: "-8", trend: "down" as const, icon: Clock, description: "awaiting review" },
+  { title: "Avg Grade", value: "82.5%", change: "+3.2%", trend: "up" as const, icon: BarChart3, description: "overall average" },
 ];
 
 const gradingQueue = [
-  {
-    id: "SUB-101",
-    student: "Alice Johnson",
-    assignment: "Data Structures Final Project",
-    class: "CS-301",
-    submittedAt: "2026-04-05 14:30",
-    status: "submitted",
-    files: 3,
-  },
-  {
-    id: "SUB-102",
-    student: "Bob Smith",
-    assignment: "Algorithm Analysis Report",
-    class: "CS-301",
-    submittedAt: "2026-04-05 12:15",
-    status: "late",
-    files: 2,
-  },
-  {
-    id: "SUB-103",
-    student: "Carol Davis",
-    assignment: "Database Design Project",
-    class: "CS-350",
-    submittedAt: "2026-04-04 23:55",
-    status: "submitted",
-    files: 4,
-  },
-  {
-    id: "SUB-104",
-    student: "David Lee",
-    assignment: "Operating Systems Lab 5",
-    class: "CS-301",
-    submittedAt: "2026-04-04 18:20",
-    status: "graded",
-    grade: "88/100",
-    files: 2,
-  },
-  {
-    id: "SUB-105",
-    student: "Emma Wilson",
-    assignment: "Network Security Essay",
-    class: "CS-420",
-    submittedAt: "2026-04-03 09:45",
-    status: "returned",
-    grade: "92/100",
-    files: 1,
-  },
+  { id: "SUB-101", student: "Alice Johnson", assignment: "Data Structures Final Project", class: "CS-301", submittedAt: "2026-04-05 14:30", status: "submitted", files: 3 },
+  { id: "SUB-102", student: "Bob Smith", assignment: "Algorithm Analysis Report", class: "CS-301", submittedAt: "2026-04-05 12:15", status: "late", files: 2 },
+  { id: "SUB-103", student: "Carol Davis", assignment: "Database Design Project", class: "CS-350", submittedAt: "2026-04-04 23:55", status: "submitted", files: 4 },
+  { id: "SUB-104", student: "David Lee", assignment: "Operating Systems Lab 5", class: "CS-301", submittedAt: "2026-04-04 18:20", status: "graded", grade: "88/100", files: 2 },
+  { id: "SUB-105", student: "Emma Wilson", assignment: "Network Security Essay", class: "CS-420", submittedAt: "2026-04-03 09:45", status: "returned", grade: "92/100", files: 1 },
 ];
 
 const myAssignments = [
-  {
-    id: "ASG-201",
-    title: "Data Structures Final Project",
-    class: "CS-301",
-    dueDate: "2026-04-15",
-    submissions: "42/58",
-    submissionRate: 72,
-    status: "published",
-  },
-  {
-    id: "ASG-202",
-    title: "Algorithm Analysis Report",
-    class: "CS-301",
-    dueDate: "2026-04-10",
-    submissions: "58/58",
-    submissionRate: 100,
-    status: "closed",
-  },
-  {
-    id: "ASG-203",
-    title: "Database Design Project",
-    class: "CS-350",
-    dueDate: "2026-04-20",
-    submissions: "15/45",
-    submissionRate: 33,
-    status: "published",
-  },
-  {
-    id: "ASG-204",
-    title: "Operating Systems Lab 5",
-    class: "CS-301",
-    dueDate: "2026-04-08",
-    submissions: "50/58",
-    submissionRate: 86,
-    status: "published",
-  },
-  {
-    id: "ASG-205",
-    title: "Network Security Essay",
-    class: "CS-420",
-    dueDate: "2026-04-25",
-    submissions: "0/35",
-    submissionRate: 0,
-    status: "draft",
-  },
+  { id: "ASG-201", title: "Data Structures Final Project", class: "CS-301", dueDate: "2026-04-15", submissions: "42/58", submissionRate: 72, status: "published" as const },
+  { id: "ASG-202", title: "Algorithm Analysis Report", class: "CS-301", dueDate: "2026-04-10", submissions: "58/58", submissionRate: 100, status: "closed" as const },
+  { id: "ASG-203", title: "Database Design Project", class: "CS-350", dueDate: "2026-04-20", submissions: "15/45", submissionRate: 33, status: "published" as const },
+  { id: "ASG-204", title: "Operating Systems Lab 5", class: "CS-301", dueDate: "2026-04-08", submissions: "50/58", submissionRate: 86, status: "published" as const },
+  { id: "ASG-205", title: "Network Security Essay", class: "CS-420", dueDate: "2026-04-25", submissions: "0/35", submissionRate: 0, status: "draft" as const },
 ];
 
 const myClasses = [
@@ -221,19 +137,44 @@ const monthlyPerformance = [
 
 function StatusBadge({ status }: { status: string }) {
   const variants: Record<string, string> = {
-    published: "bg-green-500/20 text-green-400 border-green-500/30",
-    draft: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-    closed: "bg-gray-500/20 text-gray-400 border-gray-500/30",
-    submitted: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-    late: "bg-red-500/20 text-red-400 border-red-500/30",
-    graded: "bg-green-500/20 text-green-400 border-green-500/30",
-    returned: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+    published: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+    draft: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
+    closed: "bg-slate-500/10 text-slate-700 dark:text-slate-400",
+    submitted: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+    late: "bg-red-500/10 text-red-700 dark:text-red-400",
+    graded: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+    returned: "bg-purple-500/10 text-purple-700 dark:text-purple-400",
   };
 
   return (
-    <Badge className={`capitalize ${variants[status] || variants.draft}`}>
-      {status}
+    <Badge variant="secondary" className={variants[status] || variants.draft}>
+      {status.charAt(0).toUpperCase() + status.slice(1)}
     </Badge>
+  );
+}
+
+const getInitials = (name: string) =>
+  name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+
+// --- Stat Card ---
+function DashboardStat({ title, value, change, trend, icon: Icon, description }: typeof teacherStats[number]) {
+  return (
+    <Card>
+      <CardContent className="flex items-center gap-4 p-5">
+        <div className={`rounded-xl p-3 ${trend === "up" ? "bg-blue-500/10 text-blue-500" : "bg-amber-500/10 text-amber-500"}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="text-2xl font-bold">{value}</p>
+          <p className="text-sm text-muted-foreground">{title}</p>
+          <div className="flex items-center gap-1 text-xs">
+            {trend === "up" ? <ArrowUpRight className="h-3 w-3 text-emerald-500" /> : <ArrowDownRight className="h-3 w-3 text-red-500" />}
+            <span className={trend === "up" ? "text-emerald-500" : "text-red-500"}>{change}</span>
+            <span className="text-muted-foreground">{description}</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -242,260 +183,166 @@ function StatusBadge({ status }: { status: string }) {
 export default function TeacherDashboardPage() {
   const [activeTab, setActiveTab] = React.useState("overview");
   const [searchQuery, setSearchQuery] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState("all");
 
-  const filteredGradingQueue = gradingQueue.filter(
-    (item) =>
-      item.student.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.assignment.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.class.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredGradingQueue = gradingQueue.filter((item) => {
+    const matchSearch = item.student.toLowerCase().includes(searchQuery.toLowerCase()) || item.assignment.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchStatus = statusFilter === "all" || item.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
+
+  const handleExportGrades = () => {
+    const headers = ["Student", "Assignment", "Class", "Grade", "Status"];
+    const rows = gradingQueue.filter((s) => s.grade).map((s) => [s.student, s.assignment, s.class, s.grade || "", s.status]);
+    const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${c}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `grades-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Grades exported");
+  };
+
+  // Derived stats
+  const totalPending = gradingQueue.filter((s) => s.status === "submitted" || s.status === "late").length;
+  const totalGraded = gradingQueue.filter((s) => s.status === "graded" || s.status === "returned").length;
+  const avgGradeValue = gradingQueue.filter((s) => s.grade).reduce((sum, s) => sum + parseInt(s.grade || "0"), 0) / gradingQueue.filter((s) => s.grade).length || 0;
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Teacher Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your classes, assignments, and grading workflow.
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight">Teacher Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Manage your classes, assignments, and grading workflow.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
-            <MessageSquare className="mr-2 h-4 w-4" />
-            Messages
+          <Button variant="outline" onClick={handleExportGrades}>
+            <Download className="mr-2 h-4 w-4" />
+            Export Grades
           </Button>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            New Assignment
-          </Button>
+          <Link href="/teacher/assignments/new">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              New Assignment
+            </Button>
+          </Link>
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="grading">Grading Queue</TabsTrigger>
-          <TabsTrigger value="classes">My Classes</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-        </TabsList>
+      {/* Stats */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {teacherStats.map((stat) => (
+          <DashboardStat key={stat.title} {...stat} />
+        ))}
+      </div>
 
-        {/* ===== OVERVIEW TAB ===== */}
-        <TabsContent value="overview" className="space-y-6">
-          {/* Stats Cards */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {teacherStats.map((stat) => (
-              <Card key={stat.title}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                  <stat.icon className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stat.value}</div>
-                  <div className="flex items-center gap-1 text-xs">
-                    {stat.trend === "up" ? (
-                      <ArrowUpRight className="h-3 w-3 text-green-500" />
-                    ) : (
-                      <ArrowDownRight className="h-3 w-3 text-red-500" />
-                    )}
-                    <span className={stat.trend === "up" ? "text-green-500" : "text-red-500"}>
-                      {stat.change}
-                    </span>
-                    <span className="text-muted-foreground">{stat.description}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Quick Access Cards */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Link href="/teacher/assignments">
-              <Card className="h-full cursor-pointer border-slate-200 hover:border-blue-300 hover:shadow-md dark:border-slate-700 dark:hover:border-blue-500/50 transition-all group">
-                <CardContent className="flex items-center gap-4 p-5">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 group-hover:scale-110 transition-transform">
-                    <ClipboardList className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-800 dark:text-white">Assignments</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Manage your assignments</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+      {/* Performance & Quick Access */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-base">Class Performance Overview</CardTitle>
+            <CardDescription>Average grades and student counts by class</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={myClasses}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                <XAxis dataKey="id" stroke="rgba(255,255,255,0.5)" fontSize={12} />
+                <YAxis stroke="rgba(255,255,255,0.5)" fontSize={12} />
+                <Tooltip contentStyle={{ backgroundColor: "rgba(30, 30, 50, 0.95)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "#fff" }} />
+                <Bar dataKey="avgGrade" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Avg Grade" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
             <Link href="/teacher/submissions">
-              <Card className="h-full cursor-pointer border-slate-200 hover:border-amber-300 hover:shadow-md dark:border-slate-700 dark:hover:border-amber-500/50 transition-all group">
-                <CardContent className="flex items-center gap-4 p-5">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 group-hover:scale-110 transition-transform">
-                    <Clock className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-800 dark:text-white">Pending</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">View pending submissions</p>
-                  </div>
-                </CardContent>
-              </Card>
+              <Button variant="outline" className="w-full justify-start">
+                <Clock className="mr-2 h-4 w-4" />
+                Grade Pending ({totalPending})
+              </Button>
+            </Link>
+            <Link href="/teacher/assignments">
+              <Button variant="outline" className="w-full justify-start">
+                <ClipboardList className="mr-2 h-4 w-4" />
+                Manage Assignments
+              </Button>
             </Link>
             <Link href="/teacher/grades">
-              <Card className="h-full cursor-pointer border-slate-200 hover:border-green-300 hover:shadow-md dark:border-slate-700 dark:hover:border-green-500/50 transition-all group">
-                <CardContent className="flex items-center gap-4 p-5">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400 group-hover:scale-110 transition-transform">
-                    <BarChart3 className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-800 dark:text-white">Grade Report</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">View grading analytics</p>
-                  </div>
-                </CardContent>
-              </Card>
+              <Button variant="outline" className="w-full justify-start">
+                <BarChart3 className="mr-2 h-4 w-4" />
+                View Grade Report
+              </Button>
             </Link>
             <Link href="/teacher/students">
-              <Card className="h-full cursor-pointer border-slate-200 hover:border-purple-300 hover:shadow-md dark:border-slate-700 dark:hover:border-purple-500/50 transition-all group">
-                <CardContent className="flex items-center gap-4 p-5">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400 group-hover:scale-110 transition-transform">
-                    <UserCheck className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-800 dark:text-white">Student List</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Browse your students</p>
-                  </div>
-                </CardContent>
-              </Card>
+              <Button variant="outline" className="w-full justify-start">
+                <Users className="mr-2 h-4 w-4" />
+                View Students
+              </Button>
             </Link>
-          </div>
+          </CardContent>
+        </Card>
+      </div>
 
-          {/* Quick Actions & Alerts */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card className="border-yellow-500/30 bg-yellow-500/5">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-yellow-500" />
-                  <CardTitle>Attention Needed</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Overdue grading</span>
-                  <Badge variant="destructive">12 submissions</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Assignments due this week</span>
-                  <Badge variant="secondary">3 assignments</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Students requesting extensions</span>
-                  <Badge variant="outline">5 requests</Badge>
-                </div>
-              </CardContent>
-            </Card>
+      {/* Alerts & Monthly Trend */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              <CardTitle>Attention Needed</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Overdue grading</span>
+              <Badge variant="destructive">12 submissions</Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Assignments due this week</span>
+              <Badge variant="secondary">3 assignments</Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Extension requests</span>
+              <Badge variant="outline">5 requests</Badge>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Monthly Performance Trend</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={monthlyPerformance}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                <XAxis dataKey="month" stroke="rgba(255,255,255,0.5)" fontSize={12} />
+                <YAxis stroke="rgba(255,255,255,0.5)" fontSize={12} />
+                <Tooltip contentStyle={{ backgroundColor: "rgba(30, 30, 50, 0.95)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "#fff" }} />
+                <Line type="monotone" dataKey="avgGrade" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-                <CardDescription>Frequently used actions</CardDescription>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-3">
-                <Button variant="outline" className="justify-start">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Assignment
-                </Button>
-                <Button variant="outline" className="justify-start">
-                  <Clock className="mr-2 h-4 w-4" />
-                  View Pending
-                </Button>
-                <Button variant="outline" className="justify-start">
-                  <BarChart3 className="mr-2 h-4 w-4" />
-                  Grade Report
-                </Button>
-                <Button variant="outline" className="justify-start">
-                  <Users className="mr-2 h-4 w-4" />
-                  Student List
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col gap-6">
+        <TabsList className="w-fit">
+          <TabsTrigger value="overview">Assignments</TabsTrigger>
+          <TabsTrigger value="grading">Grading Queue ({totalPending})</TabsTrigger>
+          <TabsTrigger value="classes">My Classes</TabsTrigger>
+        </TabsList>
 
-          {/* Charts Row */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            {/* Weekly Grading Activity */}
-            <Card className="col-span-4">
-              <CardHeader>
-                <CardTitle>Weekly Grading Activity</CardTitle>
-                <CardDescription>Submissions received vs graded this week</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={weeklyGradingData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                    <XAxis dataKey="name" stroke="rgba(255,255,255,0.5)" fontSize={12} />
-                    <YAxis stroke="rgba(255,255,255,0.5)" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "rgba(30, 30, 50, 0.95)",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        borderRadius: "8px",
-                        color: "#fff",
-                      }}
-                    />
-                    <Bar dataKey="submitted" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="graded" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            {/* Grade Distribution */}
-            <Card className="col-span-3">
-              <CardHeader>
-                <CardTitle>Grade Distribution</CardTitle>
-                <CardDescription>Overall grade breakdown</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={gradeDistribution}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={90}
-                      paddingAngle={3}
-                      dataKey="value"
-                    >
-                      {gradeDistribution.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "rgba(30, 30, 50, 0.95)",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        borderRadius: "8px",
-                        color: "#fff",
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="space-y-1 mt-2">
-                  {gradeDistribution.map((item) => (
-                    <div key={item.name} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="h-3 w-3 rounded-full"
-                          style={{ backgroundColor: item.color }}
-                        />
-                        <span className="text-sm text-muted-foreground">{item.name}</span>
-                      </div>
-                      <span className="text-sm font-medium">{item.value} students</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Recent Assignments */}
+        {/* Assignments Tab */}
+        <TabsContent value="overview">
           <Card>
             <CardHeader>
               <CardTitle>My Assignments</CardTitle>
@@ -516,41 +363,36 @@ export default function TeacherDashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {myAssignments.map((assignment) => (
-                    <TableRow key={assignment.id}>
-                      <TableCell className="font-mono text-xs">{assignment.id}</TableCell>
-                      <TableCell className="font-medium">{assignment.title}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{assignment.class}</Badge>
-                      </TableCell>
-                      <TableCell>{assignment.dueDate}</TableCell>
-                      <TableCell>{assignment.submissions}</TableCell>
+                  {myAssignments.map((a) => (
+                    <TableRow key={a.id}>
+                      <TableCell className="font-mono text-xs">{a.id}</TableCell>
+                      <TableCell className="font-medium">{a.title}</TableCell>
+                      <TableCell><Badge variant="secondary">{a.class}</Badge></TableCell>
+                      <TableCell>{a.dueDate}</TableCell>
+                      <TableCell>{a.submissions}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all ${
-                                assignment.submissionRate >= 80
-                                  ? "bg-green-500"
-                                  : assignment.submissionRate >= 50
-                                    ? "bg-yellow-500"
-                                    : "bg-red-500"
-                              }`}
-                              style={{ width: `${assignment.submissionRate}%` }}
-                            />
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            {assignment.submissionRate}%
-                          </span>
+                          <div className="w-16"><Progress value={a.submissionRate} className="h-2" /></div>
+                          <span className="text-xs text-muted-foreground">{a.submissionRate}%</span>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <StatusBadge status={assignment.status} />
-                      </TableCell>
+                      <TableCell><StatusBadge status={a.status} /></TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuGroup>
+                              <Link href={`/teacher/assignments/${a.id}`}>
+                                <DropdownMenuItem><Eye className="mr-2 h-4 w-4" />View</DropdownMenuItem>
+                              </Link>
+                              <Link href={`/teacher/assignments/${a.id}/edit`}>
+                                <DropdownMenuItem><FileText className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
+                              </Link>
+                            </DropdownMenuGroup>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -560,25 +402,30 @@ export default function TeacherDashboardPage() {
           </Card>
         </TabsContent>
 
-        {/* ===== GRADING QUEUE TAB ===== */}
-        <TabsContent value="grading" className="space-y-6">
+        {/* Grading Queue Tab */}
+        <TabsContent value="grading">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <CardTitle>Grading Queue</CardTitle>
-                  <CardDescription>
-                    {filteredGradingQueue.length} submissions pending review
-                  </CardDescription>
+                  <CardDescription>{filteredGradingQueue.length} submissions</CardDescription>
                 </div>
-                <div className="relative w-64">
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search submissions..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-8"
-                  />
+                <div className="flex flex-wrap gap-2">
+                  <div className="relative flex-1 min-w-[200px]">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input placeholder="Search..." className="pl-9" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                  </div>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-32"><SelectValue placeholder="Status" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="submitted">Submitted</SelectItem>
+                      <SelectItem value="late">Late</SelectItem>
+                      <SelectItem value="graded">Graded</SelectItem>
+                      <SelectItem value="returned">Returned</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardHeader>
@@ -590,46 +437,34 @@ export default function TeacherDashboardPage() {
                     <TableHead>Student</TableHead>
                     <TableHead>Assignment</TableHead>
                     <TableHead>Class</TableHead>
-                    <TableHead>Submitted At</TableHead>
-                    <TableHead>Files</TableHead>
+                    <TableHead>Submitted</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Grade</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredGradingQueue.map((submission) => (
-                    <TableRow key={submission.id}>
-                      <TableCell className="font-mono text-xs">{submission.id}</TableCell>
-                      <TableCell className="font-medium">{submission.student}</TableCell>
-                      <TableCell>{submission.assignment}</TableCell>
+                  {filteredGradingQueue.map((s) => (
+                    <TableRow key={s.id}>
+                      <TableCell className="font-mono text-xs">{s.id}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary">{submission.class}</Badge>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-7 w-7"><AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-[10px]">{getInitials(s.student)}</AvatarFallback></Avatar>
+                          <span className="text-sm font-medium">{s.student}</span>
+                        </div>
                       </TableCell>
-                      <TableCell className="text-sm">{submission.submittedAt}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{submission.files} files</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={submission.status} />
-                      </TableCell>
-                      <TableCell>
-                        {submission.grade ? (
-                          <span className="font-medium text-green-500">{submission.grade}</span>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
+                      <TableCell className="text-sm">{s.assignment}</TableCell>
+                      <TableCell><Badge variant="secondary">{s.class}</Badge></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{s.submittedAt}</TableCell>
+                      <TableCell><StatusBadge status={s.status} /></TableCell>
+                      <TableCell>{s.grade ? <span className="font-medium text-emerald-500">{s.grade}</span> : <span className="text-muted-foreground">—</span>}</TableCell>
                       <TableCell className="text-right">
-                        {submission.status === "submitted" || submission.status === "late" ? (
-                          <Button size="sm" variant="default">
-                            <CheckCircle2 className="mr-2 h-3 w-3" />
-                            Grade
-                          </Button>
+                        {s.status === "submitted" || s.status === "late" ? (
+                          <Link href={`/teacher/assignments/${s.id}/submissions`}>
+                            <Button size="sm">Grade</Button>
+                          </Link>
                         ) : (
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
+                          <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
                         )}
                       </TableCell>
                     </TableRow>
@@ -640,146 +475,74 @@ export default function TeacherDashboardPage() {
           </Card>
         </TabsContent>
 
-        {/* ===== MY CLASSES TAB ===== */}
-        <TabsContent value="classes" className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {myClasses.map((cls) => (
-              <Card key={cls.id} className="hover:bg-muted/50 transition-colors">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <Badge variant="outline">{cls.id}</Badge>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <CardTitle className="mt-3">{cls.name}</CardTitle>
-                  <CardDescription>{cls.students} enrolled students</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex flex-col items-center p-3 bg-muted/50 rounded-lg">
-                      <span className="text-2xl font-bold">{cls.avgGrade}%</span>
-                      <span className="text-xs text-muted-foreground">Avg Grade</span>
+        {/* Classes Tab */}
+        <TabsContent value="classes">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {myClasses.map((c) => (
+              <Card key={c.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <Badge variant="secondary" className="mb-2 font-mono text-xs">{c.id}</Badge>
+                      <p className="font-medium">{c.name}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{c.students} students</p>
                     </div>
-                    <div className="flex flex-col items-center p-3 bg-muted/50 rounded-lg">
-                      <span className="text-2xl font-bold">{cls.assignments}</span>
-                      <span className="text-xs text-muted-foreground">Assignments</span>
-                    </div>
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-xs"><BookOpen className="h-4 w-4" /></AvatarFallback>
+                    </Avatar>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Pending grading</span>
-                    <Badge variant={cls.pending > 10 ? "destructive" : "secondary"}>
-                      {cls.pending} submissions
-                    </Badge>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" className="flex-1 text-xs">
-                      View Details
-                    </Button>
-                    <Button className="flex-1 text-xs">
-                      <Plus className="mr-1 h-3 w-3" />
-                      New Assignment
-                    </Button>
+                  <Separator className="my-3" />
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                    <div><p className="text-muted-foreground">Assignments</p><p className="font-semibold">{c.assignments}</p></div>
+                    <div><p className="text-muted-foreground">Avg Grade</p><p className="font-semibold">{c.avgGrade}%</p></div>
+                    <div><p className="text-muted-foreground">Pending</p><p className="font-semibold">{c.pending}</p></div>
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         </TabsContent>
-
-        {/* ===== ANALYTICS TAB ===== */}
-        <TabsContent value="analytics" className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* Monthly Performance Trend */}
-            <Card className="col-span-2">
-              <CardHeader>
-                <CardTitle>Monthly Performance Trend</CardTitle>
-                <CardDescription>Average grade and submission volume over the past 6 months</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={350}>
-                  <LineChart data={monthlyPerformance}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                    <XAxis dataKey="month" stroke="rgba(255,255,255,0.5)" fontSize={12} />
-                    <YAxis yAxisId="left" stroke="rgba(255,255,255,0.5)" fontSize={12} />
-                    <YAxis
-                      yAxisId="right"
-                      orientation="right"
-                      stroke="rgba(255,255,255,0.5)"
-                      fontSize={12}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "rgba(30, 30, 50, 0.95)",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        borderRadius: "8px",
-                        color: "#fff",
-                      }}
-                    />
-                    <Line
-                      yAxisId="left"
-                      type="monotone"
-                      dataKey="avgGrade"
-                      stroke="#22c55e"
-                      strokeWidth={2}
-                      dot={{ fill: "#22c55e", r: 4 }}
-                      name="Avg Grade (%)"
-                    />
-                    <Line
-                      yAxisId="right"
-                      type="monotone"
-                      dataKey="submissions"
-                      stroke="#3b82f6"
-                      strokeWidth={2}
-                      dot={{ fill: "#3b82f6", r: 4 }}
-                      name="Submissions"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            {/* Key Metrics */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Submission Completion Rate</CardTitle>
-                <CardDescription>Overall on-time submission rate</CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col items-center justify-center">
-                <div className="text-5xl font-bold text-green-500">89%</div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  +4.5% from last semester
-                </p>
-                <div className="w-full mt-4 h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-green-500 rounded-full transition-all"
-                    style={{ width: "89%" }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Avg Grading Turnaround</CardTitle>
-                <CardDescription>Time from submission to grade</CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col items-center justify-center">
-                <div className="text-5xl font-bold text-blue-500">1.8 days</div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  -0.5 days from last month
-                </p>
-                <div className="w-full mt-4 h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-500 rounded-full transition-all"
-                    style={{ width: "72%" }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
       </Tabs>
+
+      {/* Charts */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader><CardTitle>Weekly Grading Activity</CardTitle><CardDescription>Submissions received vs graded</CardDescription></CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={weeklyGradingData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                <XAxis dataKey="name" stroke="rgba(255,255,255,0.5)" fontSize={12} />
+                <YAxis stroke="rgba(255,255,255,0.5)" fontSize={12} />
+                <Tooltip contentStyle={{ backgroundColor: "rgba(30, 30, 50, 0.95)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "#fff" }} />
+                <Bar dataKey="submitted" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="graded" fill="#22c55e" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>Grade Distribution</CardTitle><CardDescription>Overall grade breakdown</CardDescription></CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={280}>
+              <PieChart>
+                <Pie data={gradeDistribution} cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={3} dataKey="value">
+                  {gradeDistribution.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
+                </Pie>
+                <Tooltip contentStyle={{ backgroundColor: "rgba(30, 30, 50, 0.95)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "#fff" }} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="flex flex-wrap justify-center gap-3 mt-2">
+              {gradeDistribution.map((item) => (
+                <div key={item.name} className="flex items-center gap-1.5">
+                  <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                  <span className="text-xs text-muted-foreground">{item.name} ({item.value})</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

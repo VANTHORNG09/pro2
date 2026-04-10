@@ -40,6 +40,17 @@ export function Topbar({
   const notificationsRef = React.useRef<HTMLDivElement>(null);
   const pathname = usePathname();
 
+  // Derive role from pathname
+  const getRoleFromPathname = (): string => {
+    const segments = pathname.split("/").filter(Boolean);
+    if (segments.length > 0 && ["admin", "teacher", "student"].includes(segments[0])) {
+      return segments[0];
+    }
+    return "student";
+  };
+
+  const profileHref = `/${getRoleFromPathname()}/profile`;
+
   // Close dropdowns on outside click
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -325,7 +336,7 @@ export function Topbar({
               </div>
               <div className="py-1.5">
                 <Link
-                  href="/profile"
+                  href={profileHref}
                   className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700"
                   onClick={() => setProfileOpen(false)}
                 >

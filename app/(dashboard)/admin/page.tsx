@@ -1,26 +1,43 @@
 "use client";
 
+import * as React from "react";
+import Link from "next/link";
 import {
-  IconTrendingDown,
-  IconTrendingUp,
-  IconUsers,
-  IconFileText,
-  IconCircleCheck,
-  IconClock,
-  IconPlus,
-  IconDownload,
-  IconSettings,
-  IconUserPlus,
-  IconMail,
-  IconChartBar,
-  IconSchool,
-  IconTrophy,
-  IconArrowRight,
-} from "@tabler/icons-react";
+  Users,
+  BookOpen,
+  ClipboardList,
+  BarChart3,
+  Shield,
+  FileText,
+  Inbox,
+  Activity,
+  AlertTriangle,
+  TrendingUp,
+  Clock,
+  CheckCircle2,
+  Bell,
+  Search,
+  RotateCcw,
+  GraduationCap,
+  Target,
+} from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -29,400 +46,320 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ChartAreaInteractive } from "@/components/layout/chart-area-interactive";
-import { cn } from "@/lib/utils";
 
-// --- Data ---
+// --- Mock Data ---
 
-const stats = [
-  {
-    title: "Total Users",
-    value: "1,234",
-    change: "+12.5%",
-    trend: "up" as const,
-    description: "Across all roles",
-    icon: IconUsers,
-  },
-  {
-    title: "Total Assignments",
-    value: "456",
-    change: "+8.2%",
-    trend: "up" as const,
-    description: "This semester",
-    icon: IconFileText,
-  },
-  {
-    title: "Graded Submissions",
-    value: "3,892",
-    change: "+15.3%",
-    trend: "up" as const,
-    description: "On-time completions",
-    icon: IconCircleCheck,
-  },
-  {
-    title: "Pending Review",
-    value: "87",
-    change: "-4.1%",
-    trend: "down" as const,
-    description: "Awaiting grading",
-    icon: IconClock,
-  },
+const adminStats = [
+  { title: "Total Users", value: "1,248", change: "+32", trend: "up" as const, icon: Users, description: "across all roles" },
+  { title: "Active Classes", value: "86", change: "+5", trend: "up" as const, icon: BookOpen, description: "this semester" },
+  { title: "Pending Reviews", value: "142", change: "-18", trend: "down" as const, icon: Clock, description: "awaiting action" },
+  { title: "Platform Uptime", value: "99.8%", change: "+0.2%", trend: "up" as const, icon: Activity, description: "last 30 days" },
 ];
 
-const recentSubmissions = [
-  { id: "SUB-001", student: "Alice Johnson", assignment: "Math Quiz Ch.5", class: "Math 101", status: "Submitted", date: "Apr 8" },
-  { id: "SUB-002", student: "Bob Smith", assignment: "Physics Lab Report", class: "Physics 201", status: "Graded", date: "Apr 7" },
-  { id: "SUB-003", student: "Charlie Brown", assignment: "Essay: Hamlet", class: "English 301", status: "Late", date: "Apr 7" },
-  { id: "SUB-004", student: "Diana Prince", assignment: "Code Review #3", class: "CS 401", status: "Submitted", date: "Apr 6" },
-  { id: "SUB-005", student: "Eve Wilson", assignment: "Stats Homework", class: "Stats 101", status: "Graded", date: "Apr 6" },
-  { id: "SUB-006", student: "Frank Miller", assignment: "DB Design Project", class: "CS 301", status: "Submitted", date: "Apr 5" },
-  { id: "SUB-007", student: "Grace Lee", assignment: "Literature Review", class: "English 201", status: "Graded", date: "Apr 5" },
-];
-
-const topTeachers = [
-  { name: "Dr. Sarah Connor", classes: 4, assignments: 28, graded: 342, avgGrade: 87 },
-  { name: "Prof. James Kirk", classes: 3, assignments: 22, graded: 298, avgGrade: 82 },
-  { name: "Dr. Emily Chen", classes: 5, assignments: 35, graded: 410, avgGrade: 91 },
-  { name: "Prof. Alan Turing", classes: 3, assignments: 18, graded: 256, avgGrade: 85 },
-];
-
-const topClasses = [
-  { name: "CS 401 - Advanced Algorithms", students: 45, avgGrade: 89, completionRate: 96 },
-  { name: "Math 101 - Calculus I", students: 120, avgGrade: 76, completionRate: 88 },
-  { name: "English 301 - Shakespeare", students: 35, avgGrade: 84, completionRate: 92 },
-  { name: "Physics 201 - Mechanics", students: 85, avgGrade: 78, completionRate: 91 },
+const quickAccessCards = [
+  { href: "/admin/users", icon: Users, color: "blue", title: "User Management", desc: "Manage accounts & roles" },
+  { href: "/admin/roles", icon: Shield, color: "purple", title: "Role Management", desc: "Manage permissions" },
+  { href: "/admin/classes", icon: BookOpen, color: "emerald", title: "Class Management", desc: "Organize classes" },
+  { href: "/admin/assignments", icon: ClipboardList, color: "violet", title: "Assignments", desc: "Review all assignments" },
+  { href: "/admin/submissions", icon: Inbox, color: "amber", title: "Submissions", desc: "Monitor submissions" },
+  { href: "/admin/flagged", icon: Bell, color: "orange", title: "Flagged", desc: "Review flagged items" },
+  { href: "/admin/resubmissions", icon: RotateCcw, color: "cyan", title: "Resubmissions", desc: "Handle resubmissions" },
+  { href: "/admin/grading-queue", icon: CheckCircle2, color: "teal", title: "Grading Queue", desc: "Process grading" },
+  { href: "/admin/plagiarism", icon: Target, color: "red", title: "Plagiarism", desc: "Review plagiarism cases" },
+  { href: "/admin/teachers", icon: GraduationCap, color: "indigo", title: "Teachers", desc: "Manage teachers" },
+  { href: "/admin/students", icon: Users, color: "sky", title: "Students", desc: "Manage students" },
+  { href: "/admin/pending-users", icon: Search, color: "pink", title: "Pending Users", desc: "Review user requests" },
+  { href: "/admin/teacher-activity", icon: Activity, color: "slate", title: "Teacher Activity", desc: "Monitor teachers" },
+  { href: "/admin/reports", icon: BarChart3, color: "lime", title: "Reports", desc: "Generate reports" },
+  { href: "/admin/logs", icon: FileText, color: "zinc", title: "Activity Logs", desc: "View activity logs" },
+  { href: "/admin/analytics", icon: TrendingUp, color: "fuchsia", title: "Analytics", desc: "Platform insights" },
 ];
 
 const recentActivity = [
-  { action: "New user registered", detail: "John Doe joined as Teacher", time: "2 min ago", type: "user" as const },
-  { action: "Assignment published", detail: "CS 401 - Final Project by Prof. Turing", time: "15 min ago", type: "assignment" as const },
-  { action: "Submission graded", detail: "Physics 201 - Lab #4 by Dr. Connor", time: "1 hour ago", type: "grade" as const },
-  { action: "Class created", detail: "Data Science 101 by Dr. Chen", time: "3 hours ago", type: "class" as const },
-  { action: "User role updated", detail: "Jane Smith promoted to Admin", time: "5 hours ago", type: "user" as const },
+  { id: 1, user: "Admin User", action: "created new class", target: "Machine Learning Advanced", time: "2 min ago", type: "create" as const },
+  { id: 2, user: "Dr. Sarah Johnson", action: "graded submission", target: "Data Structures Final Project", time: "15 min ago", type: "grade" as const },
+  { id: 3, user: "System", action: "flagged suspicious activity", target: "Multiple failed login attempts", time: "1 hour ago", type: "alert" as const },
+  { id: 4, user: "Prof. Michael Chen", action: "published assignment", target: "Database Schema Design", time: "2 hours ago", type: "publish" as const },
+  { id: 5, user: "Admin User", action: "updated user role", target: "John Smith → Teacher", time: "3 hours ago", type: "update" as const },
+  { id: 6, user: "Dr. Alex Kumar", action: "archived class", target: "Organic Chemistry (Fall 2025)", time: "5 hours ago", type: "archive" as const },
 ];
 
-// --- Helpers ---
+const userDistribution = [
+  { name: "Students", value: 980, color: "#22c55e" },
+  { name: "Teachers", value: 186, color: "#3b82f6" },
+  { name: "Admins", value: 82, color: "#ef4444" },
+];
 
-function getStatusVariant(status: string) {
-  switch (status) {
-    case "Submitted": return "default";
-    case "Graded": return "secondary";
-    case "Late": return "destructive";
-    default: return "outline";
-  }
+const monthlyActivityData = [
+  { month: "Jan", users: 820, classes: 64, submissions: 1200 },
+  { month: "Feb", users: 910, classes: 70, submissions: 1580 },
+  { month: "Mar", users: 1020, classes: 75, submissions: 1890 },
+  { month: "Apr", users: 1120, classes: 80, submissions: 2240 },
+  { month: "May", users: 1180, classes: 82, submissions: 2100 },
+  { month: "Jun", users: 1248, classes: 86, submissions: 2450 },
+];
+
+const classPerformance = [
+  { name: "CS-301", avgGrade: 84, submissions: 180 },
+  { name: "CS-350", avgGrade: 79, submissions: 140 },
+  { name: "CS-420", avgGrade: 88, submissions: 95 },
+  { name: "CS-450", avgGrade: 81, submissions: 160 },
+  { name: "MATH-101", avgGrade: 76, submissions: 320 },
+];
+
+// --- Helper Components ---
+
+function ActivityIcon({ type }: { type: string }) {
+  const icons: Record<string, { icon: typeof Users; color: string }> = {
+    create: { icon: CheckCircle2, color: "text-emerald-500" },
+    grade: { icon: ClipboardList, color: "text-blue-500" },
+    alert: { icon: AlertTriangle, color: "text-red-500" },
+    publish: { icon: FileText, color: "text-violet-500" },
+    update: { icon: Users, color: "text-amber-500" },
+    archive: { icon: BookOpen, color: "text-slate-500" },
+  };
+  const config = icons[type] || icons.create;
+  const Icon = config.icon;
+  return <Icon className={`h-4 w-4 ${config.color}`} />;
 }
 
-function getActivityIcon(type: string) {
-  switch (type) {
-    case "user": return IconUserPlus;
-    case "assignment": return IconFileText;
-    case "grade": return IconTrophy;
-    case "class": return IconSchool;
-    default: return IconClock;
-  }
-}
+const colorMap: Record<string, string> = {
+  blue: "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400",
+  emerald: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400",
+  violet: "bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400",
+  amber: "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
+  cyan: "bg-cyan-50 text-cyan-600 dark:bg-cyan-500/10 dark:text-cyan-400",
+  red: "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400",
+  indigo: "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400",
+  teal: "bg-teal-50 text-teal-600 dark:bg-teal-500/10 dark:text-teal-400",
+  purple: "bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400",
+  orange: "bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400",
+  sky: "bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400",
+  pink: "bg-pink-50 text-pink-600 dark:bg-pink-500/10 dark:text-pink-400",
+  lime: "bg-lime-50 text-lime-600 dark:bg-lime-500/10 dark:text-lime-400",
+  zinc: "bg-zinc-50 text-zinc-600 dark:bg-zinc-500/10 dark:text-zinc-400",
+  slate: "bg-slate-50 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400",
+  fuchsia: "bg-fuchsia-50 text-fuchsia-600 dark:bg-fuchsia-500/10 dark:text-fuchsia-400",
+};
 
-function getActivityColor(type: string) {
-  switch (type) {
-    case "user": return "bg-blue-500";
-    case "assignment": return "bg-emerald-500";
-    case "grade": return "bg-amber-500";
-    case "class": return "bg-purple-500";
-    default: return "bg-slate-500";
-  }
-}
-
-// --- Page ---
+// --- Main Page ---
 
 export default function AdminDashboardPage() {
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 md:gap-6 md:p-6">
+    <div className="flex flex-col gap-6">
       {/* Page Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Admin Dashboard</h1>
-          <p className="text-muted-foreground">
-            Manage users, assignments, and monitor platform activity.
+          <p className="text-sm text-muted-foreground">
+            Monitor platform activity, manage users, and oversee all operations.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <IconDownload className="mr-2 size-4" />
-            Export
-          </Button>
-          <Button size="sm">
-            <IconPlus className="mr-2 size-4" />
-            New Assignment
-          </Button>
+        <div className="flex gap-2">
+          <Link href="/admin/users">
+            <Button variant="outline">
+              <Users className="mr-2 h-4 w-4" />
+              Manage Users
+            </Button>
+          </Link>
+          <Link href="/admin/flagged">
+            <Button variant="outline">
+              <AlertTriangle className="mr-2 h-4 w-4" />
+              Flagged Items
+            </Button>
+          </Link>
+          <Link href="/admin/grading-queue">
+            <Button>
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              Grading Queue
+            </Button>
+          </Link>
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
+        {adminStats.map((stat) => (
           <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-              <stat.icon className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                {stat.trend === "up" ? (
-                  <IconTrendingUp className="size-3 text-emerald-500" />
-                ) : (
-                  <IconTrendingDown className="size-3 text-red-500" />
-                )}
-                <span className={stat.trend === "up" ? "text-emerald-500" : "text-red-500"}>
-                  {stat.change}
-                </span>
-                <span className="ml-1">{stat.description}</span>
+            <CardContent className="flex items-center gap-4 p-5">
+              <div className={`rounded-xl p-3 ${stat.trend === "up" ? "bg-blue-500/10 text-blue-500" : "bg-amber-500/10 text-amber-500"}`}>
+                <stat.icon className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{stat.value}</p>
+                <p className="text-sm text-muted-foreground">{stat.title}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  <span className={stat.trend === "up" ? "text-emerald-500" : "text-red-500"}>
+                    {stat.change}
+                  </span>
+                  {" "}{stat.description}
+                </p>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>Common administrative tasks at a glance.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Button variant="outline" className="h-auto flex-col items-start gap-1 p-4">
-              <IconUserPlus className="size-5 text-emerald-500" />
-              <span className="text-sm font-medium">Add User</span>
-              <span className="text-xs text-muted-foreground">Create a new account</span>
-            </Button>
-            <Button variant="outline" className="h-auto flex-col items-start gap-1 p-4">
-              <IconMail className="size-5 text-blue-500" />
-              <span className="text-sm font-medium">Send Announcement</span>
-              <span className="text-xs text-muted-foreground">Notify all users</span>
-            </Button>
-            <Button variant="outline" className="h-auto flex-col items-start gap-1 p-4">
-              <IconChartBar className="size-5 text-amber-500" />
-              <span className="text-sm font-medium">View Reports</span>
-              <span className="text-xs text-muted-foreground">Platform analytics</span>
-            </Button>
-            <Button variant="outline" className="h-auto flex-col items-start gap-1 p-4">
-              <IconSettings className="size-5 text-purple-500" />
-              <span className="text-sm font-medium">System Settings</span>
-              <span className="text-xs text-muted-foreground">Configure platform</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Tabs */}
-      <Tabs defaultValue="overview" className="flex flex-col gap-4">
-        <TabsList className="w-fit">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="submissions">Submissions</TabsTrigger>
-          <TabsTrigger value="teachers">Teachers</TabsTrigger>
-          <TabsTrigger value="classes">Classes</TabsTrigger>
-        </TabsList>
-
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="flex flex-col gap-4">
-          <ChartAreaInteractive />
-
-          {/* Activity Feed + Submissions */}
-          <div className="grid gap-4 lg:grid-cols-3">
-            {/* Activity Feed */}
-            <Card className="lg:col-span-1">
-              <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>Latest platform events.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col gap-4">
-                  {recentActivity.map((item, i) => {
-                    const ActivityIcon = getActivityIcon(item.type);
-                    return (
-                      <div key={i} className="flex items-start gap-3">
-                        <div className={cn("mt-1 size-2 shrink-0 rounded-full", getActivityColor(item.type))} />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium">{item.action}</p>
-                          <p className="truncate text-xs text-muted-foreground">{item.detail}</p>
-                          <p className="mt-0.5 text-[11px] text-muted-foreground">{item.time}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Recent Submissions */}
-            <Card className="lg:col-span-2">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                <div>
-                  <CardTitle>Recent Submissions</CardTitle>
-                  <CardDescription>Latest across all classes.</CardDescription>
-                </div>
-                <Button variant="ghost" size="sm" className="gap-1">
-                  View all <IconArrowRight className="size-3.5" />
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Student</TableHead>
-                      <TableHead className="hidden sm:table-cell">Assignment</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="hidden md:table-cell">Date</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {recentSubmissions.slice(0, 5).map((s) => (
-                      <TableRow key={s.id}>
-                        <TableCell className="font-medium">{s.student}</TableCell>
-                        <TableCell className="hidden sm:table-cell">{s.assignment}</TableCell>
-                        <TableCell>
-                          <Badge variant={getStatusVariant(s.status)}>{s.status}</Badge>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-muted-foreground">{s.date}</TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="sm">View</Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Submissions Tab */}
-        <TabsContent value="submissions" className="flex flex-col gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>All Submissions</CardTitle>
-              <CardDescription>Manage and review student submissions.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Assignment</TableHead>
-                    <TableHead>Class</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentSubmissions.map((s) => (
-                    <TableRow key={s.id}>
-                      <TableCell className="font-mono text-xs">{s.id}</TableCell>
-                      <TableCell className="font-medium">{s.student}</TableCell>
-                      <TableCell>{s.assignment}</TableCell>
-                      <TableCell>{s.class}</TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusVariant(s.status)}>{s.status}</Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{s.date}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">Review</Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Teachers Tab */}
-        <TabsContent value="teachers" className="flex flex-col gap-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {topTeachers.map((teacher) => (
-              <Card key={teacher.name}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">{teacher.name}</CardTitle>
-                  <CardDescription>{teacher.classes} classes</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Assignments</span>
-                    <span className="font-medium">{teacher.assignments}</span>
+      {/* Quick Access */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {quickAccessCards.map((card) => {
+          const Icon = card.icon;
+          const cardColor = colorMap[card.color] || colorMap.blue;
+          return (
+            <Link key={card.href} href={card.href}>
+              <Card className="h-full cursor-pointer border-slate-200 hover:border-primary/30 hover:shadow-md dark:border-slate-700 dark:hover:border-primary/30 transition-all group">
+                <CardContent className="flex items-center gap-4 p-5">
+                  <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${cardColor} group-hover:scale-110 transition-transform`}>
+                    <Icon className="h-6 w-6" />
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Graded</span>
-                    <span className="font-medium">{teacher.graded}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Avg Grade</span>
-                    <span className="font-medium">{teacher.avgGrade}%</span>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-white">{card.title}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{card.desc}</p>
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        </TabsContent>
+            </Link>
+          );
+        })}
+      </div>
 
-        {/* Classes Tab */}
-        <TabsContent value="classes" className="flex flex-col gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Top Classes</CardTitle>
-              <CardDescription>Classes ranked by student performance.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Class</TableHead>
-                    <TableHead>Students</TableHead>
-                    <TableHead>Avg Grade</TableHead>
-                    <TableHead>Completion Rate</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {topClasses.map((cls) => (
-                    <TableRow key={cls.name}>
-                      <TableCell className="font-medium">{cls.name}</TableCell>
-                      <TableCell>{cls.students}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={cls.avgGrade >= 85 ? "default" : cls.avgGrade >= 75 ? "secondary" : "destructive"}
-                        >
-                          {cls.avgGrade}%
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="h-2 w-16 rounded-full bg-muted">
-                            <div
-                              className={cn(
-                                "h-full rounded-full",
-                                cls.completionRate >= 95 ? "bg-emerald-500" : cls.completionRate >= 85 ? "bg-amber-500" : "bg-red-500"
-                              )}
-                              style={{ width: `${cls.completionRate}%` }}
-                            />
-                          </div>
-                          <span className="text-sm text-muted-foreground">{cls.completionRate}%</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">Details</Button>
-                      </TableCell>
-                    </TableRow>
+      {/* Charts Row */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        {/* Platform Growth */}
+        <Card className="col-span-4">
+          <CardHeader>
+            <CardTitle>Platform Growth</CardTitle>
+            <CardDescription>Users, classes, and submissions over time</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={monthlyActivityData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                <XAxis dataKey="month" stroke="rgba(255,255,255,0.5)" fontSize={12} />
+                <YAxis stroke="rgba(255,255,255,0.5)" fontSize={12} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "rgba(30, 30, 50, 0.95)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: "8px",
+                    color: "#fff",
+                  }}
+                />
+                <Line type="monotone" dataKey="users" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="classes" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="submissions" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* User Distribution */}
+        <Card className="col-span-3">
+          <CardHeader>
+            <CardTitle>User Distribution</CardTitle>
+            <CardDescription>Breakdown by role</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={userDistribution}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={90}
+                  paddingAngle={4}
+                  dataKey="value"
+                >
+                  {userDistribution.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "rgba(30, 30, 50, 0.95)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: "8px",
+                    color: "#fff",
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="flex justify-center gap-4 mt-2">
+              {userDistribution.map((item) => (
+                <div key={item.name} className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
+                  <span className="text-sm text-muted-foreground">{item.name} ({item.value})</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Class Performance */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Class Performance Overview</CardTitle>
+          <CardDescription>Average grades and submission counts</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={classPerformance}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+              <XAxis dataKey="name" stroke="rgba(255,255,255,0.5)" fontSize={12} />
+              <YAxis stroke="rgba(255,255,255,0.5)" fontSize={12} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "rgba(30, 30, 50, 0.95)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: "8px",
+                  color: "#fff",
+                }}
+              />
+              <Bar dataKey="avgGrade" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Avg Grade" />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Recent Activity */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Platform Activity</CardTitle>
+          <CardDescription>Latest actions across the platform</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-10"></TableHead>
+                <TableHead>User</TableHead>
+                <TableHead>Action</TableHead>
+                <TableHead>Target</TableHead>
+                <TableHead>Time</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {recentActivity.map((item) => (
+                <TableRow key={item.id} className="hover:bg-muted/50">
+                  <TableCell>
+                    <ActivityIcon type={item.type} />
+                  </TableCell>
+                  <TableCell className="font-medium">{item.user}</TableCell>
+                  <TableCell className="text-sm">{item.action}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="font-mono text-xs">
+                      {item.target}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{item.time}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }

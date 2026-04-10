@@ -64,8 +64,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAuth } from "@/hooks/useAuth";
-import { ta } from "zod/v4/locales";
-import { table } from "console";
 
 // ============= Types =============
 
@@ -77,6 +75,7 @@ interface NavItem {
   icon: LucideIcon;
   badge?: number;
   disabled?: boolean;
+  items?: NavItem[];
 }
 
 interface NavGroup {
@@ -121,72 +120,52 @@ const adminNavGroups: NavGroup[] = [
     label: "Management",
     items: [
       { title: "Dashboard", href: "/admin", icon: LayoutDashboard },
-      { title: "User Management", href: "/admin/users", icon: Users, badge: 3 },
+      { title: "User Management", href: "/admin/users", icon: Users, },
+      { title: "Role Management", href: "/admin/roles", icon: Shield },
       { title: "Class Management", href: "/admin/classes", icon: BookOpen },
       { title: "Course Management", href: "/admin/courses", icon: FileText },
       { title: "Assignments", href: "/admin/assignments", icon: ClipboardList },
+      {title: "Submissions", href: "/admin/submissions", icon: Inbox, },
+      { title: "Teacher Management", href: "/admin/teachers", icon: User, badge: 2 },
+     { title: "Student Management", href: "/admin/students", icon: User, badge: 5 },
+      { title: "Audit Logs", href: "/admin/audit-logs", icon: History },
     ],
   },
   {
     label: "Submissions",
     items: [
       { title: "All Submissions", href: "/admin/submissions", icon: Inbox, badge: 14 },
-      { title: "Pending Review", href: "/admin/pending", icon: Clock, badge: 8 },
       { title: "Flagged Submissions", href: "/admin/flagged", icon: Bell, badge: 2 },
       { title: "Resubmissions", href: "/admin/resubmissions", icon: Search, badge: 5 },
       { title: "Grading Queue", href: "/admin/grading-queue", icon: CheckCircle2, badge: 12 },
-      { title: "Submission Analytics", href: "/admin/submission-analytics", icon: BarChart3 },
       { title: "Late Submissions", href: "/admin/late-submissions", icon: History, badge: 4 },
       { title: "Plagiarism Cases", href: "/admin/plagiarism", icon: Target, badge: 1 },
       { title: "Submission Trends", href: "/admin/submission-trends", icon: TrendingUp },
       { title: "Top Performers", href: "/admin/top-performers", icon: Award },
-      { title: "Activity Logs", href: "/admin/activity-logs", icon: History},
-      { title: "Teacher Activity", href: "/admin/teacher-activity", icon: Users},
+      { title: "Teacher Activity", href: "/admin/teacher-activity", icon: Users },
+      { title: "Student Activity", href: "/admin/student-activity", icon: Users },
     ],
   },
   {
-    label: "Panding",
+    label: "Pending",
     items: [
-      { title: "Pending Submissions", href: "/admin/pending-submissions", icon: Clock, badge: 8 },
-      { title: "Pending Reviews", href: "/admin/pending-reviews", icon: CheckCircle2, badge: 12 },
-      { title: "Pending Approvals", href: "/admin/pending-approvals", icon: Bell, badge: 3 },
-      { title: "Pending User Requests", href: "/admin/pending-users", icon: Users, badge: 5 },
-      { title: "Pending Class Approvals", href: "/admin/pending-classes", icon: BookOpen, badge: 2 },
-      { title: "Pending Course Approvals", href: "/admin/pending-courses", icon: FileText, badge: 4 },
-      { title: "Pending Assignment Approvals", href: "/admin/pending-assignments", icon: ClipboardList, badge: 6 },{ title: "Pending Reports", href: "/admin/pending-submissions", icon: BarChart3, badge: 7 },
+      { title: "Pending Users", href: "/admin/pending-users", icon: Users, badge: 5 },
+      { title: "Pending Classes", href: "/admin/pending-classes", icon: BookOpen, badge: 2 },
     ],
   },
   {
     label: "Analytics",
     items: [
       { title: "Dashboard Analytics", href: "/admin/analytics", icon: LayoutDashboard },
-      { title: "User Analytics", href: "/admin/user-analytics", icon: Users },
-      { title: "Class Analytics", href: "/admin/class-analytics", icon: BookOpen },
-      { title: "Course Analytics", href: "/admin/course-analytics", icon: FileText },
-      { title: "Assignment Analytics", href: "/admin/assignment-analytics", icon: ClipboardList },
-      { title: "Engagement Metrics", href: "/admin/engagement-metrics", icon: BarChart3 },
-      { title: "Performance Metrics", href: "/admin/performance-metrics", icon: Award },
       { title: "Activity Logs", href: "/admin/logs", icon: History },
-
     ],
   },
   {
     label: "Reports",
     items: [
       { title: "Reports", href: "/admin/reports", icon: BarChart3 },
-      { title: "student-reports", href: "/admin/student-reports", icon: BarChart3 },
-      {title: "Class Performance", href: "/admin/class-performance", icon: BarChart3 },
-      {
-        title: "Course Performance",
-        href: "/admin/course-performance",
-        icon: BarChart3,
-      },
-      {title: "User Engagement", href: "/admin/engagement", icon: Users },
-      { title: "Class-wise Summary", href: "/admin/class-report", icon: Target },
       { title: "Grade Report", href: "/admin/gradereport", icon: Award },
       { title: "Student Performance", href: "/admin/student-performance", icon: Users },
-      { title: "Activity Logs", href: "/admin/logs", icon: History },
-     
     ],
   },
 ];
@@ -236,10 +215,20 @@ const studentNavGroups: NavGroup[] = [
   },
 ];
 
-const generalNavItems: NavItem[] = [
-  { title: "Profile", href: "/profile", icon: User },
-  { title: "Notifications", href: "/notifications", icon: Bell, badge: 4 },
-];
+const generalNavItems: Record<UserRole, NavItem[]> = {
+  admin: [
+    { title: "Profile", href: "/admin/profile", icon: User },
+    { title: "Notifications", href: "/notifications", icon: Bell, badge: 4 },
+  ],
+  teacher: [
+    { title: "Profile", href: "/teacher/profile", icon: User },
+    { title: "Notifications", href: "/notifications", icon: Bell, badge: 4 },
+  ],
+  student: [
+    { title: "Profile", href: "/student/profile", icon: User },
+    { title: "Notifications", href: "/notifications", icon: Bell, badge: 4 },
+  ],
+};
 
 const bottomNavItems: NavItem[] = [
   { title: "Settings", href: "/settings", icon: Settings },
@@ -352,6 +341,8 @@ function NavUser({ user }: { user: { name: string; email: string; role: UserRole
     .slice(0, 2)
     .toUpperCase();
 
+  const profileHref = `/${user.role}/profile`;
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -395,7 +386,7 @@ function NavUser({ user }: { user: { name: string; email: string; role: UserRole
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href="/profile">
+                <Link href={profileHref}>
                   <User />
                   Profile
                 </Link>
@@ -444,6 +435,7 @@ export function AppSidebar({ role = "student", ...props }: AppSidebarProps) {
     if (href === "/admin") return pathname === "/admin" || pathname === "/dashboard";
     if (href === "/teacher") return pathname === "/teacher" || pathname === "/dashboard";
     if (href === "/student") return pathname === "/student" || pathname === "/dashboard";
+    if (href.endsWith("/profile")) return pathname === href;
     return pathname.startsWith(href);
   };
 
@@ -491,7 +483,7 @@ export function AppSidebar({ role = "student", ...props }: AppSidebarProps) {
           <SidebarGroupLabel>General</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {generalNavItems.map((item) => (
+              {generalNavItems[role].map((item) => (
                 <NavGroupItem key={item.href} item={item} isActive={isActive(item.href)} />
               ))}
             </SidebarMenu>

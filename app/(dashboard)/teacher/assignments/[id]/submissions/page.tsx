@@ -33,7 +33,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAssignment } from "@/lib/hooks/queries/useAssignments";
 import { useSubmissions, useDownloadSubmissions } from "@/lib/hooks/queries/useSubmissions";
 import { useToast } from "@/hooks/use-toast";
-import { GradingInterface } from "@/components/assignments/GradingInterface";
+import { GradingInterface } from "@/features/submissions/components/GradingInterface";
 import type { SubmissionFilters, SubmissionStatus } from "@/lib/types/assignment";
 
 // ─── Stat Card Component ──────────────────────────────────────────────

@@ -1,16 +1,16 @@
 import Navbar from "@/components/navbar/navbar";
-import HeroSection from "@/components/landing-page-features/hero-section";
-import ProblemValueSection from "@/components/landing-page-features/problem-value-section";
-import FeaturesSection from "@/components/landing-page-features/features-section";
-import HowItWorksSection from "@/components/landing-page-features/how-it-works-section";
-import WhoItsForSection from "@/components/landing-page-features/who-its-for-section";
-import DashboardPreviewSection from "@/components/landing-page-features/dashboard-preview-section";
-import BenefitsProofSection from "@/components/landing-page-features/benefits-proof-section";
-import AudienceTrustSection from "@/components/landing-page-features/audience-trust-section";
-import FinalCtaSection from "@/components/landing-page-features/final-cta-section";
-import FaqSection from "@/components/landing-page-features/faq-section";
-import Footer from "@/components/landing-page-features/footer-section";
-import { ScrollToTopButton } from "@/components/landing-page-features/scroll-to-top-button";
+import HeroSection from "./components/hero-section";
+import ProblemValueSection from "./components/problem-value-section";
+import FeaturesSection from "./components/features-section";
+import HowItWorksSection from "./components/how-it-works-section";
+import WhoItsForSection from "./components/who-its-for-section";
+import DashboardPreviewSection from "./components/dashboard-preview-section";
+import BenefitsProofSection from "./components/benefits-proof-section";
+import AudienceTrustSection from "./components/audience-trust-section";
+import FinalCtaSection from "./components/final-cta-section";
+import FaqSection from "./components/faq-section";
+import Footer from "./components/footer-section";
+import { ScrollToTopButton } from "./components/scroll-to-top-button";
 const role = "admin";
 export default function Home() {
   return (
